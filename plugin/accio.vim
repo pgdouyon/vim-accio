@@ -22,6 +22,7 @@ sign define AccioError text=>> texthl=Error
 sign define AccioWarning text=>> texthl=Todo
 
 let s:job_prefix = 'accio_'
+let s:sign_id_prefix = '954'
 let s:makeprg_errors = {}
 
 function! s:accio(args)
@@ -69,7 +70,7 @@ function! s:place_signs(errors)
         if (get(error, "bufnr", 0) < 1) || (get(error, "lnum", 0) < 1)
             continue
         endif
-        let id = error.bufnr . error.lnum
+        let id = s:sign_id_prefix . error.bufnr . error.lnum
         let sign_name = "AccioError"
         execute printf("sign place %s line=%d name=%s buffer=%d",
             \ id, error.lnum, sign_name, error.bufnr)
@@ -85,7 +86,7 @@ function! s:clear_makeprg_errors(makeprg, makeprg_target)
         if get(error, "bufnr", 0) < 1 || get(error, "lnum", 0) < 1
             continue
         endif
-        let id = error.bufnr . error.lnum
+        let id = s:sign_id_prefix . error.bufnr . error.lnum
         execute "sign unplace " . id . " buffer=" . error.bufnr
     endfor
     let s:makeprg_errors[a:makeprg][a:makeprg_target] = []
