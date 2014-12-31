@@ -72,9 +72,38 @@ function! s:place_signs(errors)
         endif
         let id = s:sign_id_prefix . error.bufnr . error.lnum
         let sign_name = "AccioError"
-        execute printf("sign place %s line=%d name=%s buffer=%d",
-            \ id, error.lnum, sign_name, error.bufnr)
+        let accio_sign = {"id": id, "lnum": error.lnum, "name": sign_name, "bufnr": error.bufnr}
+        let external_signs = s:get_external_signs(error.bufnr, error.lnum)
+
+        for sgn in external_signs
+            execute printf("sign unplace %d buffer=%d", sgn.id, sgn.bufnr)
+        endfor
+        for sgn in [accio_sign] + external_signs
+            execute printf("sign place %d line=%d name=%s buffer=%d",
+                \ sgn.id, sgn.lnum, sgn.name, sgn.bufnr)
+        endfor
     endfor
+endfunction
+
+
+function! s:get_external_signs(bufnr, lnum)
+    redir => signlist
+    silent! execute "sign place buffer=" . a:bufnr
+    redir END
+
+    let signs = []
+    for signline in split(signlist, '\n')[2:]
+        let tokens = split(signline, '\s*\w*=')
+        let lnum = tokens[0]
+        let id = tokens[1]
+        let name = tokens[2]
+
+        if (lnum == a:lnum) && (name !~# '^Accio')
+            let sgn = {"id": id, "lnum": lnum, "name": name, "bufnr": a:bufnr}
+            call add(signs, sgn)
+        endif
+    endfor
+    return signs
 endfunction
 
 
