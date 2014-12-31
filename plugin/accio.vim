@@ -28,11 +28,11 @@ function! s:accio(args)
     let [accio_prg, accio_args] = matchlist(a:args, '^\(\S*\)\s*\(.*\)')[1:2]
     execute "compiler " . accio_prg
 
+    let makeprg = matchstr(&l:makeprg, '^\s*\zs\S*')
+    let makeargs = matchstr(&l:makeprg, '^\s*\S*\s*\zs.*') . accio_args
+    let makeargs = substitute(makeargs, '\\\@<!\%(%\|#\)', '\=expand(submatch(0))', 'g')
     let is_make_local = ((&l:makeprg . accio_args) =~# '[^\\]\%(%\|#\)')
     let makeprg_target = (is_make_local ? bufnr("%") : "global")
-    let makeprg = split(&l:makeprg)[0]
-    let makeargs = split(&l:makeprg)[1:] . accio_args
-    let makeargs = substitute(makeargs, '[^\\]\zs\%(%\|#\)', '\=expand(submatch(0))', 'g')
 
     let new_loclist = ""
     lgetexpr new_loclist
@@ -41,7 +41,7 @@ function! s:accio(args)
     let job_name = s:job_prefix . makeprg . "_" . makeprg_target
     execute printf("autocmd! JobActivity %s call <SID>job_handler('%s', '%s')",
         \ job_name, makeprg, makeprg_target)
-    call jobstart(job_name, makeprg, makeargs)
+    call jobstart(job_name, makeprg, split(makeargs))
 endfunction
 
 
