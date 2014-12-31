@@ -23,6 +23,8 @@ sign define AccioWarning text=>> texthl=Todo
 
 let s:job_prefix = 'accio_'
 let s:sign_id_prefix = '954'
+let s:accio_queue = []
+let s:in_progress = {}
 let s:makeprg_errors = {}
 
 function! s:accio(args)
@@ -35,6 +37,13 @@ function! s:accio(args)
     let is_make_local = ((&l:makeprg . accio_args) =~# '[^\\]\%(%\|#\)')
     let makeprg_target = (is_make_local ? bufnr("%") : "global")
 
+    let make_in_progress = s:is_in_progress(makeprg, makeprg_target)
+    if make_in_progress
+        call add(s:accio_queue, a:args)
+        return
+    endif
+    let s:in_progress[makeprg][makeprg_target] = 1
+
     let new_loclist = ""
     lgetexpr new_loclist
     call s:clear_makeprg_errors(makeprg, makeprg_target)
@@ -46,8 +55,24 @@ function! s:accio(args)
 endfunction
 
 
+function! s:is_in_progress(makeprg, makeprg_target)
+    if !has_key(s:in_progress, a:makeprg)
+        let s:in_progress[a:makeprg] = {}
+    endif
+
+    if a:makeprg_target ==# "global"
+        let in_progress = !empty(s:in_progress[a:makeprg])
+    else
+        let in_progress = get(s:in_progress[a:makeprg], a:makeprg_target, 0)
+    endif
+    return in_progress
+endfunction
+
+
 function! s:job_handler(makeprg, makeprg_target)
-    if v:job_data[1] !=# "exit"
+    if v:job_data[1] ==# "exit"
+        silent! unlet s:in_progress[a:makeprg][a:makeprg_target]
+    else
         let errors = s:add_to_loclist(v:job_data[2])
         call s:place_signs(errors)
         call extend(s:makeprg_errors[a:makeprg][a:makeprg_target], errors)
@@ -120,6 +145,21 @@ function! s:clear_makeprg_errors(makeprg, makeprg_target)
     endfor
     let s:makeprg_errors[a:makeprg][a:makeprg_target] = []
 endfunction
+
+
+function! s:accio_process_queue()
+    if !empty(s:accio_queue)
+        let accio = s:accio_queue[0]
+        call filter(s:accio_queue, 'v:val !=# '.accio)
+        call s:accio(accio)
+    endif
+endfunction
+
+
+augroup accio
+    autocmd!
+    autocmd CursorHold,CursorHoldI * call <SID>accio_process_queue()
+augroup END
 
 
 command! -nargs=+ -complete=compiler Accio call <SID>accio(<q-args>)
