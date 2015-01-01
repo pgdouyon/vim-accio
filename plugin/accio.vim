@@ -26,6 +26,7 @@ let s:sign_id_prefix = '954'
 let s:accio_queue = []
 let s:in_progress = {}
 let s:accio_signs = {}
+let s:accio_sign_messages = {}
 
 function! s:accio(args)
     let [accio_prg, accio_args] = matchlist(a:args, '^\(\S*\)\s*\(.*\)')[1:2]
@@ -53,6 +54,7 @@ function! s:accio(args)
     let signs = get(s:accio_signs[makeprg], makeprg_target, [])
     let s:accio_signs[makeprg][makeprg_target] = []
     call s:unplace_signs(signs)
+    call s:clear_sign_messages(signs)
 
     let job_name = s:job_prefix . makeprg . "_" . makeprg_target
     execute printf("autocmd! JobActivity %s call <SID>job_handler('%s', '%s')",
@@ -82,6 +84,7 @@ function! s:job_handler(makeprg, makeprg_target)
         let errors = s:add_to_loclist(v:job_data[2])
         let signs =  filter(errors, 'v:val.bufnr > 0 && v:val.lnum > 0')
         call s:place_signs(signs)
+        call s:save_sign_messages(signs)
         call extend(s:accio_signs[a:makeprg][a:makeprg_target], signs)
     endif
 endfunction
@@ -139,10 +142,45 @@ function! s:get_external_signs(bufnr, lnum)
 endfunction
 
 
+function! s:save_sign_messages(signs)
+    for sign in a:signs
+        if !has_key(s:accio_sign_messages, sign.bufnr)
+            let s:accio_sign_messages[sign.bufnr] = {}
+        endif
+        let tab_spaces = repeat(' ', &tabstop)
+        let msg = get(sign, "text", "No error message available...")
+        let msg = substitute(msg, '\n', ' ', 'g')
+        let msg = substitute(msg, '\t', tab_spaces, 'g')
+        let msg = strpart(msg, 0, &columns - 1)
+        let s:accio_sign_messages[sign.bufnr][sign.lnum] = "[Accio] " . msg
+    endfor
+endfunction
+
+
+function! s:echo_accio_message()
+    let bufnr = bufnr("%")
+    let lnum = line(".")
+    if has_key(s:accio_sign_messages, bufnr) && has_key(s:accio_sign_messages[bufnr], lnum)
+        echohl WarningMsg | echo s:accio_sign_messages[bufnr][lnum] | echohl None
+    else
+        echo
+    endif
+endfunction
+
+
 function! s:unplace_signs(signs)
     for sign in a:signs
         let id = sign.bufnr . s:sign_id_prefix . sign.lnum
         execute "sign unplace " . id . " buffer=" . sign.bufnr
+    endfor
+endfunction
+
+
+function! s:clear_sign_messages(signs)
+    for sign in a:signs
+        let bufnr = sign.bufnr
+        let lnum = sign.lnum
+        silent! unlet s:accio_sign_messages[bufnr][lnum]
     endfor
 endfunction
 
@@ -159,6 +197,7 @@ endfunction
 augroup accio
     autocmd!
     autocmd CursorHold,CursorHoldI * call <SID>accio_process_queue()
+    autocmd CursorMoved * call <SID>echo_accio_message()
 augroup END
 
 
