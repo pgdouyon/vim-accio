@@ -95,7 +95,7 @@ function! s:place_signs(errors)
         if (get(error, "bufnr", 0) < 1) || (get(error, "lnum", 0) < 1)
             continue
         endif
-        let id = s:sign_id_prefix . error.bufnr . error.lnum
+        let id = error.bufnr . s:sign_id_prefix . error.lnum
         let sign_name = "AccioError"
         let accio_sign = {"id": id, "lnum": error.lnum, "name": sign_name, "bufnr": error.bufnr}
         let external_signs = s:get_external_signs(error.bufnr, error.lnum)
@@ -140,7 +140,7 @@ function! s:clear_makeprg_errors(makeprg, makeprg_target)
         if get(error, "bufnr", 0) < 1 || get(error, "lnum", 0) < 1
             continue
         endif
-        let id = s:sign_id_prefix . error.bufnr . error.lnum
+        let id = error.bufnr . s:sign_id_prefix . error.lnum
         execute "sign unplace " . id . " buffer=" . error.bufnr
     endfor
     let s:makeprg_errors[a:makeprg][a:makeprg_target] = []
