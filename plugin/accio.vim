@@ -25,7 +25,7 @@ let s:job_prefix = 'accio_'
 let s:sign_id_prefix = '954'
 let s:accio_queue = []
 let s:in_progress = {}
-let s:makeprg_errors = {}
+let s:accio_signs = {}
 
 function! s:accio(args)
     let [accio_prg, accio_args] = matchlist(a:args, '^\(\S*\)\s*\(.*\)')[1:2]
@@ -46,7 +46,13 @@ function! s:accio(args)
 
     let new_loclist = ""
     lgetexpr new_loclist
-    call s:clear_makeprg_errors(makeprg, makeprg_target)
+
+    if !has_key(s:accio_signs, makeprg)
+        let s:accio_signs[makeprg] = {}
+    endif
+    let signs = get(s:accio_signs[makeprg], makeprg_target, [])
+    let s:accio_signs[makeprg][makeprg_target] = []
+    call s:unplace_signs(signs)
 
     let job_name = s:job_prefix . makeprg . "_" . makeprg_target
     execute printf("autocmd! JobActivity %s call <SID>job_handler('%s', '%s')",
@@ -74,8 +80,9 @@ function! s:job_handler(makeprg, makeprg_target)
         silent! unlet s:in_progress[a:makeprg][a:makeprg_target]
     else
         let errors = s:add_to_loclist(v:job_data[2])
-        call s:place_signs(errors)
-        call extend(s:makeprg_errors[a:makeprg][a:makeprg_target], errors)
+        let signs =  filter(errors, 'v:val.bufnr > 0 && v:val.lnum > 0')
+        call s:place_signs(signs)
+        call extend(s:accio_signs[a:makeprg][a:makeprg_target], signs)
     endif
 endfunction
 
@@ -132,18 +139,11 @@ function! s:get_external_signs(bufnr, lnum)
 endfunction
 
 
-function! s:clear_makeprg_errors(makeprg, makeprg_target)
-    if !has_key(s:makeprg_errors, a:makeprg)
-        let s:makeprg_errors[a:makeprg] = {}
-    endif
-    for error in get(s:makeprg_errors[a:makeprg], a:makeprg_target, [])
-        if get(error, "bufnr", 0) < 1 || get(error, "lnum", 0) < 1
-            continue
-        endif
-        let id = error.bufnr . s:sign_id_prefix . error.lnum
-        execute "sign unplace " . id . " buffer=" . error.bufnr
+function! s:unplace_signs(signs)
+    for sign in a:signs
+        let id = sign.bufnr . s:sign_id_prefix . sign.lnum
+        execute "sign unplace " . id . " buffer=" . sign.bufnr
     endfor
-    let s:makeprg_errors[a:makeprg][a:makeprg_target] = []
 endfunction
 
 
