@@ -194,6 +194,14 @@ function! s:accio_process_queue()
 endfunction
 
 
+function! accio#statusline()
+    let bufnr = winbufnr(0)
+    let statusline = "Errors: "
+    let error_count = len(s:accio_sign_messages[bufnr])
+    return statusline . error_count
+endfunction
+
+
 augroup accio
     autocmd!
     autocmd CursorHold,CursorHoldI * call <SID>accio_process_queue()
