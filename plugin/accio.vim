@@ -7,7 +7,7 @@
 "License:     MIT <../LICENSE>
 "==============================================================================
 
-if exists("g:loaded_accio")
+if exists("g:loaded_accio") || !has("nvim")
     finish
 endif
 let g:loaded_accio = 1
