@@ -57,8 +57,8 @@ function! s:accio(args)
     call s:clear_sign_messages(signs)
 
     let job_name = s:job_prefix . makeprg . "_" . makeprg_target
-    execute printf("autocmd! JobActivity %s call <SID>job_handler('%s', '%s')",
-        \ job_name, makeprg, makeprg_target)
+    execute printf("autocmd! JobActivity %s call <SID>job_handler('%s', '%s', '%s')",
+        \ job_name, makeprg, makeprg_target, &l:errorformat)
     call jobstart(job_name, makeprg, split(makeargs))
 endfunction
 
@@ -77,11 +77,11 @@ function! s:is_in_progress(makeprg, makeprg_target)
 endfunction
 
 
-function! s:job_handler(makeprg, makeprg_target)
+function! s:job_handler(makeprg, makeprg_target, errorformat)
     if v:job_data[1] ==# "exit"
         silent! unlet s:in_progress[a:makeprg][a:makeprg_target]
     else
-        let errors = s:add_to_loclist(v:job_data[2])
+        let errors = s:add_to_loclist(v:job_data[2], a:errorformat)
         let signs =  filter(errors, 'v:val.bufnr > 0 && v:val.lnum > 0')
         call s:place_signs(signs)
         call s:save_sign_messages(signs)
@@ -90,9 +90,9 @@ function! s:job_handler(makeprg, makeprg_target)
 endfunction
 
 
-function! s:add_to_loclist(error_lines)
+function! s:add_to_loclist(error_lines, errorformat)
     let save_errorformat = &g:errorformat
-    let &g:errorformat = &l:errorformat
+    let &g:errorformat = a:errorformat
     laddexpr a:error_lines
     let errors = getloclist(0)
     let &g:errorformat = save_errorformat
