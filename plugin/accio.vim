@@ -33,9 +33,11 @@ function! s:accio(args)
     execute "compiler " . accio_prg
 
     let makeprg = matchstr(&l:makeprg, '^\s*\zs\S*')
-    let makeargs = matchstr(&l:makeprg, '^\s*\S*\s*\zs.*') . accio_args
+    let makeargs = matchstr(&l:makeprg, '^\s*\S*\s*\zs.*')
+    let makeargs = (makeargs =~ '\$\*') ? substitute(makeargs, '\$\*', escape(accio_args, '&\'), 'g') : makeargs accio_args
     let makeargs = substitute(makeargs, '\\\@<!\%(%\|#\)\%(:[phtre~.S]\)*', '\=expand(submatch(0))', 'g')
-    let is_make_local = ((&l:makeprg . accio_args) =~# '[^\\]\%(%\|#\)')
+    let local_make_re = '[^\\]\%(%\|#\)'
+    let is_make_local = (&l:makeprg =~# local_make_re) || (accio_args =~# local_make_re)
     let makeprg_target = (is_make_local ? bufnr("%") : "global")
 
     let make_in_progress = s:is_in_progress(makeprg, makeprg_target)
