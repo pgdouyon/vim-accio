@@ -29,6 +29,8 @@ let s:accio_signs = {}
 let s:accio_sign_messages = {}
 
 function! s:accio(args)
+    let save_makeprg = &l:makeprg
+    let save_errorformat = &l:errorformat
     let [accio_prg, accio_args] = matchlist(a:args, '^\(\S*\)\s*\(.*\)')[1:2]
     execute "compiler " . accio_prg
 
@@ -50,6 +52,8 @@ function! s:accio(args)
                     \ job_name, makeprg, makeprg_target, &l:errorformat)
         call jobstart(job_name, makeprg, split(makeargs))
     endif
+    let &l:makeprg = save_makeprg
+    let &l:errorformat = save_errorformat
 endfunction
 
 
