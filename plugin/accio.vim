@@ -100,6 +100,7 @@ function! s:job_handler(makeprg, makeprg_target, errorformat)
         call s:place_signs(signs)
         call s:save_sign_messages(signs)
         call extend(s:accio_signs[a:makeprg][a:makeprg_target], signs)
+        lwindow
     endif
 endfunction
 
