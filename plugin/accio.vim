@@ -47,7 +47,7 @@ function! s:accio(args)
         call add(s:accio_queue, a:args)
     else
         call s:setup_accio(makeprg, makeprg_target)
-        let job_name = s:job_prefix . makeprg . "_" . makeprg_target
+        let job_name = s:get_job_name(makeprg, makeprg_target)
         execute printf("autocmd! JobActivity %s call <SID>job_handler('%s', '%s', '%s')",
                     \ job_name, makeprg, makeprg_target, &l:errorformat)
         call jobstart(job_name, makeprg, split(makeargs))
@@ -85,9 +85,15 @@ function! s:setup_accio(makeprg, makeprg_target)
 endfunction
 
 
+function! s:get_job_name(makeprg, makeprg_target)
+    return s:job_prefix . a:makeprg . "_" . a:makeprg_target
+endfunction
+
+
 function! s:job_handler(makeprg, makeprg_target, errorformat)
     if v:job_data[1] ==# "exit"
         silent! unlet s:in_progress[a:makeprg][a:makeprg_target]
+        execute "autocmd! JobActivity " . s:get_job_name(a:makeprg, a:makeprg_target)
     else
         let errors = s:add_to_loclist(v:job_data[2], a:errorformat)
         let signs =  filter(errors, 'v:val.bufnr > 0 && v:val.lnum > 0')
