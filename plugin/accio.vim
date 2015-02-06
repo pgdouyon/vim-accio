@@ -43,25 +43,13 @@ function! s:accio(args)
     let make_in_progress = s:is_in_progress(makeprg, makeprg_target)
     if make_in_progress
         call add(s:accio_queue, a:args)
-        return
+    else
+        call s:setup_accio(makeprg, makeprg_target)
+        let job_name = s:job_prefix . makeprg . "_" . makeprg_target
+        execute printf("autocmd! JobActivity %s call <SID>job_handler('%s', '%s', '%s')",
+                    \ job_name, makeprg, makeprg_target, &l:errorformat)
+        call jobstart(job_name, makeprg, split(makeargs))
     endif
-    let s:in_progress[makeprg][makeprg_target] = 1
-
-    let new_loclist = ""
-    lgetexpr new_loclist
-
-    if !has_key(s:accio_signs, makeprg)
-        let s:accio_signs[makeprg] = {}
-    endif
-    let signs = get(s:accio_signs[makeprg], makeprg_target, [])
-    let s:accio_signs[makeprg][makeprg_target] = []
-    call s:unplace_signs(signs)
-    call s:clear_sign_messages(signs)
-
-    let job_name = s:job_prefix . makeprg . "_" . makeprg_target
-    execute printf("autocmd! JobActivity %s call <SID>job_handler('%s', '%s', '%s')",
-        \ job_name, makeprg, makeprg_target, &l:errorformat)
-    call jobstart(job_name, makeprg, split(makeargs))
 endfunction
 
 
@@ -76,6 +64,20 @@ function! s:is_in_progress(makeprg, makeprg_target)
         let in_progress = get(s:in_progress[a:makeprg], a:makeprg_target, 0)
     endif
     return in_progress
+endfunction
+
+
+function! s:setup_accio(makeprg, makeprg_target)
+    if !has_key(s:accio_signs, a:makeprg)
+        let s:accio_signs[a:makeprg] = {}
+    endif
+
+    lgetexpr ""
+    let signs = get(s:accio_signs[a:makeprg], a:makeprg_target, [])
+    let s:in_progress[a:makeprg][a:makeprg_target] = 1
+    let s:accio_signs[a:makeprg][a:makeprg_target] = []
+    call s:unplace_signs(signs)
+    call s:clear_sign_messages(signs)
 endfunction
 
 
