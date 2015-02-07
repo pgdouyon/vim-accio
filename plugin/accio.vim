@@ -208,9 +208,9 @@ endfunction
 
 
 function! accio#statusline()
-    let bufnr = winbufnr(0)
+    let bufnr = bufnr("%")
     let statusline = "Errors: "
-    let error_count = len(s:accio_sign_messages[bufnr])
+    let error_count = len(get(s:accio_sign_messages, bufnr, {}))
     return statusline . error_count
 endfunction
 
