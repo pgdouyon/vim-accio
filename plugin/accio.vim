@@ -109,7 +109,7 @@ function! s:add_to_error_window(error_lines, errorformat)
     let save_errorformat = &g:errorformat
     let &g:errorformat = a:errorformat
     caddexpr a:error_lines
-    let errors = getloclist(0)
+    let errors = getqflist()
     let &g:errorformat = save_errorformat
     return errors
 endfunction
