@@ -19,7 +19,7 @@ set cpoptions&vim
 " Configuration and Defaults
 " ----------------------------------------------------------------------
 sign define AccioError text=>> texthl=Error
-sign define AccioWarning text=>> texthl=Todo
+sign define AccioWarning text=>> texthl=IncSearch
 
 let s:job_prefix = 'accio_'
 let s:sign_id_prefix = '954'
@@ -118,7 +118,8 @@ endfunction
 function! s:place_signs(errors)
     for error in a:errors
         let id = error.bufnr . s:sign_id_prefix . error.lnum
-        let sign_name = "AccioError"
+        let sign_type = get(error, "type", "E")
+        let sign_name = (sign_type =~? '^[EF]') ? "AccioError" : "AccioWarning"
         let accio_sign = {"id": id, "lnum": error.lnum, "name": sign_name, "bufnr": error.bufnr}
         let external_signs = s:get_external_signs(error.bufnr, error.lnum)
 
