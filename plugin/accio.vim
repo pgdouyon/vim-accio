@@ -117,9 +117,6 @@ endfunction
 
 function! s:place_signs(errors)
     for error in a:errors
-        if (get(error, "bufnr", 0) < 1) || (get(error, "lnum", 0) < 1)
-            continue
-        endif
         let id = error.bufnr . s:sign_id_prefix . error.lnum
         let sign_name = "AccioError"
         let accio_sign = {"id": id, "lnum": error.lnum, "name": sign_name, "bufnr": error.bufnr}
