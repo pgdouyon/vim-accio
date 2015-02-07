@@ -36,7 +36,7 @@ function! s:accio(args)
 
     let makeprg = matchstr(&l:makeprg, '^\s*\zs\S*')
     let makeargs = matchstr(&l:makeprg, '^\s*\S*\s*\zs.*')
-    let makeargs = (makeargs =~ '\$\*') ? substitute(makeargs, '\$\*', escape(accio_args, '&\'), 'g') : makeargs accio_args
+    let makeargs = (makeargs =~ '\$\*') ? substitute(makeargs, '\$\*', escape(accio_args, '&\'), 'g') : makeargs." ".accio_args
     let makeargs = substitute(makeargs, '\\\@<!\%(%\|#\)\%(:[phtre~.S]\)*', '\=expand(submatch(0))', 'g')
     let local_make_re = '[^\\]\%(%\|#\)'
     let is_make_local = (&l:makeprg =~# local_make_re) || (accio_args =~# local_make_re)
