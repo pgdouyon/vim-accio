@@ -76,7 +76,7 @@ function! s:setup_accio(makeprg, makeprg_target)
         let s:accio_signs[a:makeprg] = {}
     endif
 
-    lgetexpr ""
+    cgetexpr []
     let signs = get(s:accio_signs[a:makeprg], a:makeprg_target, [])
     let s:in_progress[a:makeprg][a:makeprg_target] = 1
     let s:accio_signs[a:makeprg][a:makeprg_target] = []
@@ -95,20 +95,20 @@ function! s:job_handler(makeprg, makeprg_target, errorformat)
         silent! unlet s:in_progress[a:makeprg][a:makeprg_target]
         execute "autocmd! JobActivity " . s:get_job_name(a:makeprg, a:makeprg_target)
     else
-        let errors = s:add_to_loclist(v:job_data[2], a:errorformat)
+        let errors = s:add_to_error_window(v:job_data[2], a:errorformat)
         let signs =  filter(errors, 'v:val.bufnr > 0 && v:val.lnum > 0')
         call s:place_signs(signs)
         call s:save_sign_messages(signs)
         call extend(s:accio_signs[a:makeprg][a:makeprg_target], signs)
-        lwindow
+        cwindow
     endif
 endfunction
 
 
-function! s:add_to_loclist(error_lines, errorformat)
+function! s:add_to_error_window(error_lines, errorformat)
     let save_errorformat = &g:errorformat
     let &g:errorformat = a:errorformat
-    laddexpr a:error_lines
+    caddexpr a:error_lines
     let errors = getloclist(0)
     let &g:errorformat = save_errorformat
     return errors
