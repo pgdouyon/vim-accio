@@ -80,6 +80,7 @@ function! s:job_handler(makeprg, makeprg_target, errorformat)
     if v:job_data[1] ==# "exit"
         let s:in_progress = 0
         execute "autocmd! JobActivity " . s:get_job_name(a:makeprg, a:makeprg_target)
+        call s:accio_process_queue()
     else
         let errors = s:add_to_error_window(v:job_data[2], a:errorformat)
         let signs =  filter(errors, 'v:val.bufnr > 0 && v:val.lnum > 0')
@@ -207,7 +208,6 @@ endfunction
 
 augroup accio
     autocmd!
-    autocmd CursorHold,CursorHoldI * call <SID>accio_process_queue()
     autocmd CursorMoved * call <SID>echo_accio_message()
 augroup END
 
