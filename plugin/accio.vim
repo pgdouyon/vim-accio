@@ -23,8 +23,8 @@ sign define AccioWarning text=>> texthl=IncSearch
 
 let s:job_prefix = 'accio_'
 let s:sign_id_prefix = '954'
+let s:in_progress = 0
 let s:accio_queue = []
-let s:in_progress = {}
 let s:accio_signs = {}
 let s:accio_sign_messages = {}
 
@@ -42,8 +42,7 @@ function! s:accio(args)
     let is_make_local = (&l:makeprg =~# local_make_re) || (accio_args =~# local_make_re)
     let makeprg_target = (is_make_local ? bufnr("%") : "global")
 
-    let make_in_progress = s:is_in_progress(makeprg, makeprg_target)
-    if make_in_progress
+    if s:in_progress
         call add(s:accio_queue, [a:args, makeprg_target])
     else
         call s:setup_accio(makeprg, makeprg_target)
@@ -54,20 +53,8 @@ function! s:accio(args)
     endif
     let &l:makeprg = save_makeprg
     let &l:errorformat = save_errorformat
-endfunction
 
-
-function! s:is_in_progress(makeprg, makeprg_target)
-    if !has_key(s:in_progress, a:makeprg)
-        let s:in_progress[a:makeprg] = {}
-    endif
-
-    if a:makeprg_target ==# "global"
-        let in_progress = !empty(s:in_progress[a:makeprg])
-    else
-        let in_progress = get(s:in_progress[a:makeprg], a:makeprg_target, 0)
-    endif
-    return in_progress
+    let s:in_progress = 1
 endfunction
 
 
@@ -78,7 +65,6 @@ function! s:setup_accio(makeprg, makeprg_target)
 
     cgetexpr []
     let signs = get(s:accio_signs[a:makeprg], a:makeprg_target, [])
-    let s:in_progress[a:makeprg][a:makeprg_target] = 1
     let s:accio_signs[a:makeprg][a:makeprg_target] = []
     call s:unplace_signs(signs)
     call s:clear_sign_messages(signs)
@@ -92,7 +78,7 @@ endfunction
 
 function! s:job_handler(makeprg, makeprg_target, errorformat)
     if v:job_data[1] ==# "exit"
-        silent! unlet s:in_progress[a:makeprg][a:makeprg_target]
+        let s:in_progress = 0
         execute "autocmd! JobActivity " . s:get_job_name(a:makeprg, a:makeprg_target)
     else
         let errors = s:add_to_error_window(v:job_data[2], a:errorformat)
