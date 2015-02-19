@@ -28,10 +28,18 @@ let s:accio_queue = []
 let s:accio_signs = {}
 let s:accio_sign_messages = {}
 
-function! s:accio(args)
+function! s:accio(args, ...)
     let save_makeprg = &l:makeprg
     let save_errorformat = &l:errorformat
-    let [accio_prg, accio_args] = matchlist(a:args, '^\(\S*\)\s*\(.*\)')[1:2]
+
+    if a:args[0] ==# "[" && a:args[-1:] ==# "]"
+        let args = eval(a:args)[0]
+        let rest = eval(a:args)[1:]
+    else
+        let args = a:args
+        let rest = []
+    endif
+    let [accio_prg, accio_args] = matchlist(args, '^\(\S*\)\s*\(.*\)')[1:2]
     execute "compiler " . accio_prg
 
     let makeprg = matchstr(&l:makeprg, '^\s*\zs\S*')
@@ -45,11 +53,15 @@ function! s:accio(args)
     if s:in_progress
         call add(s:accio_queue, [a:args, makeprg_target])
     else
-        call s:setup_accio(makeprg, makeprg_target)
+        let clear_quickfix = a:0 ? a:1 : 1
+        call s:setup_accio(makeprg, makeprg_target, clear_quickfix)
         let job_name = s:get_job_name(makeprg, makeprg_target)
         execute printf("autocmd! JobActivity %s call <SID>job_handler('%s', '%s', '%s')",
                     \ job_name, makeprg, makeprg_target, &l:errorformat)
         call jobstart(job_name, makeprg, split(makeargs))
+        for prg in rest
+            call s:accio(prg, 0)
+        endfor
     endif
     let &l:makeprg = save_makeprg
     let &l:errorformat = save_errorformat
@@ -58,12 +70,14 @@ function! s:accio(args)
 endfunction
 
 
-function! s:setup_accio(makeprg, makeprg_target)
+function! s:setup_accio(makeprg, makeprg_target, clear_quickfix)
     if !has_key(s:accio_signs, a:makeprg)
         let s:accio_signs[a:makeprg] = {}
     endif
 
-    cgetexpr []
+    if a:clear_quickfix
+        cgetexpr []
+    endif
     let signs = get(s:accio_signs[a:makeprg], a:makeprg_target, [])
     let s:accio_signs[a:makeprg][a:makeprg_target] = []
     call s:unplace_signs(signs)
@@ -83,7 +97,7 @@ function! s:job_handler(makeprg, makeprg_target, errorformat)
         call s:accio_process_queue()
     else
         let errors = s:add_to_error_window(v:job_data[2], a:errorformat)
-        let signs =  filter(errors, 'v:val.bufnr > 0 && v:val.lnum > 0')
+        let signs = filter(errors, 'v:val.bufnr > 0 && v:val.lnum > 0')
         call s:place_signs(signs)
         call s:save_sign_messages(signs)
         call extend(s:accio_signs[a:makeprg][a:makeprg_target], signs)
