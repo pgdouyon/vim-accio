@@ -44,7 +44,7 @@ function! s:accio(args)
 
     let make_in_progress = s:is_in_progress(makeprg, makeprg_target)
     if make_in_progress
-        call add(s:accio_queue, a:args)
+        call add(s:accio_queue, [a:args, makeprg_target])
     else
         call s:setup_accio(makeprg, makeprg_target)
         let job_name = s:get_job_name(makeprg, makeprg_target)
@@ -199,11 +199,15 @@ endfunction
 
 
 function! s:accio_process_queue()
-    if !empty(s:accio_queue)
-        let accio = s:accio_queue[0]
-        call filter(s:accio_queue, 'v:val !=# '.accio)
-        call s:accio(accio)
-    endif
+    let save_buffer = bufnr("%")
+    call uniq(sort(s:accio_queue))
+    for call_args in s:accio_queue
+        let accio_args = call_args[0]
+        let target_buffer = call_args[1]
+        execute "buffer " . target_buffer
+        call call("s:accio", accio_args)
+    endfor
+    execute "buffer " save_buffer
 endfunction
 
 
