@@ -206,7 +206,7 @@ function! s:accio_process_queue()
         let accio_args = call_args[0]
         let target_buffer = call_args[1]
         execute "buffer " . target_buffer
-        call call("s:accio", accio_args)
+        call s:accio(accio_args)
     endfor
     execute "buffer " save_buffer
 endfunction
