@@ -117,8 +117,8 @@ function! s:job_handler(makeprg, makeprg_target)
         let [accio_job.errors, accio_job.signs] += [errors, signs]
         call s:place_signs(signs)
         call s:save_sign_messages(signs, a:makeprg)
-        execute "cwindow | " winnr() " wincmd w"
     endif
+    execute "cwindow | " winnr() " wincmd w"
 endfunction
 
 
