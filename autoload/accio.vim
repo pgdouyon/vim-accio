@@ -24,25 +24,9 @@ let s:accio_sign_messages = {}
 function! accio#accio(args, ...)
     let save_makeprg = &l:makeprg
     let save_errorformat = &l:errorformat
-
-    if a:args[0] ==# "[" && a:args[-1:] ==# "]"
-        let args = eval(a:args)[0]
-        let rest = eval(a:args)[1:]
-    else
-        let args = a:args
-        let rest = []
-    endif
+    let [args; rest] = s:parse_accio_args(a:args)
     let [accio_prg, accio_args] = matchlist(args, '^\(\S*\)\s*\(.*\)')[1:2]
-    execute "compiler " . accio_prg
-
-    let makeprg = matchstr(&l:makeprg, '^\s*\zs\S*')
-    let makeargs = matchstr(&l:makeprg, '^\s*\S*\s*\zs.*')
-    let makeargs = (makeargs =~ '\$\*') ? substitute(makeargs, '\$\*', escape(accio_args, '&\'), 'g') : makeargs." ".accio_args
-    let makeargs = substitute(makeargs, '\\\@<!\%(%\|#\)\%(:[phtre~.S]\)*', '\=expand(submatch(0))', 'g')
-    let local_make_re = '[^\\]\%(%\|#\)'
-    let is_make_local = (&l:makeprg =~# local_make_re) || (accio_args =~# local_make_re)
-    let makeprg_target = (is_make_local ? bufnr("%") : "global")
-
+    let [makeprg, makeargs, makeprg_target] = s:parse_makeprg(accio_prg, accio_args)
     if s:in_progress
         call add(s:accio_queue, [a:args, makeprg_target])
     else
@@ -52,14 +36,35 @@ function! accio#accio(args, ...)
         execute printf("autocmd! JobActivity %s call <SID>job_handler('%s', '%s', '%s')",
                     \ job_name, makeprg, makeprg_target, &l:errorformat)
         call jobstart(job_name, makeprg, split(makeargs))
-        for prg in rest
-            call accio#accio(prg, 0)
-            let s:in_progress = 0
-        endfor
+        call s:process_arglist(rest)
         let s:in_progress = 1 + len(rest)
     endif
     let &l:makeprg = save_makeprg
     let &l:errorformat = save_errorformat
+endfunction
+
+
+function! s:parse_accio_args(args)
+    if a:args[0] ==# "[" && a:args[-1:] ==# "]"
+        let args = eval(a:args)[0]
+        let rest = eval(a:args)[1:]
+    else
+        let args = a:args
+        let rest = []
+    endif
+    return [args] + rest
+endfunction
+
+
+function! s:parse_makeprg(compiler, args)
+    execute "compiler " . a:compiler
+    let [makeprg, makeargs] = matchlist(&l:makeprg, '^\s*\(\S*\)\s*\(.*\)')[1:2]
+    let makeargs = (makeargs =~ '\$\*') ? substitute(makeargs, '\$\*', escape(a:args, '&\'), 'g') : makeargs." ".a:args
+    let makeargs = substitute(makeargs, '\\\@<!\%(%\|#\)\%(:[phtre~.S]\)*', '\=expand(submatch(0))', 'g')
+    let local_make_re = '[^\\]\%(%\|#\)'
+    let is_make_local = (&l:makeprg =~# local_make_re) || (a:args =~# local_make_re)
+    let makeprg_target = (is_make_local ? bufnr("%") : "global")
+    return [makeprg, makeargs, makeprg_target]
 endfunction
 
 
@@ -80,6 +85,14 @@ endfunction
 
 function! s:get_job_name(makeprg, makeprg_target)
     return s:job_prefix . a:makeprg . "_" . a:makeprg_target
+endfunction
+
+
+function! s:process_arglist(rest)
+    for arg in a:rest
+        call accio#accio(arg, 0)
+        let s:in_progress = 0
+    endfor
 endfunction
 
 
