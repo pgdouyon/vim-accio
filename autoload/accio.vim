@@ -18,7 +18,7 @@ let s:sign_id_prefix = '954'
 let s:in_progress = 0
 let s:accio_queue = []
 let s:accio_jobs = {}
-let s:accio_sign_messages = {}
+let s:accio_messages = {}
 
 
 function! accio#accio(args)
@@ -162,8 +162,8 @@ endfunction
 
 function! s:save_sign_messages(signs, makeprg)
     for sign in a:signs
-        if !has_key(s:accio_sign_messages, sign.bufnr)
-            let s:accio_sign_messages[sign.bufnr] = {}
+        if !has_key(s:accio_messages, sign.bufnr)
+            let s:accio_messages[sign.bufnr] = {}
         endif
         let tab_spaces = repeat(' ', &tabstop)
         let message_prefix = printf("[Accio - %s] ", a:makeprg)
@@ -171,18 +171,20 @@ function! s:save_sign_messages(signs, makeprg)
         let msg = substitute(msg, '\n', ' ', 'g')
         let msg = substitute(msg, '\t', tab_spaces, 'g')
         let msg = strpart(msg, 0, &columns - 1)
-        let s:accio_sign_messages[sign.bufnr][sign.lnum] = message_prefix . msg
+        let s:accio_messages[sign.bufnr][sign.lnum] = message_prefix . msg
     endfor
 endfunction
 
 
 function! accio#echo_message()
-    let bufnr = bufnr("%")
-    let lnum = line(".")
-    if has_key(s:accio_sign_messages, bufnr) && has_key(s:accio_sign_messages[bufnr], lnum)
-        echohl WarningMsg | echo s:accio_sign_messages[bufnr][lnum] | echohl None
-    else
+    let buffer_messages = get(s:accio_messages, bufnr("%"), {})
+    let message = get(buffer_messages, line("."), "")
+    if !empty(message)
+        echohl WarningMsg | echo message | echohl None
+        let b:accio_echoed_message = 1
+    elseif exists("b:accio_echoed_message") && b:accio_echoed_message
         echo
+        let b:accio_echoed_message = 0
     endif
 endfunction
 
@@ -199,7 +201,7 @@ function! s:clear_sign_messages(signs)
     for sign in a:signs
         let bufnr = sign.bufnr
         let lnum = sign.lnum
-        silent! unlet s:accio_sign_messages[bufnr][lnum]
+        silent! unlet s:accio_messages[bufnr][lnum]
     endfor
 endfunction
 
@@ -220,7 +222,7 @@ endfunction
 function! accio#statusline()
     let bufnr = bufnr("%")
     let statusline = "Errors: "
-    let error_count = len(get(s:accio_sign_messages, bufnr, {}))
+    let error_count = len(get(s:accio_messages, bufnr, {}))
     return statusline . error_count
 endfunction
 
