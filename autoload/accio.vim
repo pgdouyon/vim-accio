@@ -116,7 +116,7 @@ function! s:job_handler(makeprg, makeprg_target)
         let signs = filter(errors, 'v:val.bufnr > 0 && v:val.lnum > 0')
         let [accio_job.errors, accio_job.signs] += [errors, signs]
         call s:place_signs(signs)
-        call s:save_sign_messages(signs)
+        call s:save_sign_messages(signs, a:makeprg)
         execute "cwindow | " winnr() " wincmd w"
     endif
 endfunction
@@ -160,17 +160,18 @@ function! s:place_signs(errors)
 endfunction
 
 
-function! s:save_sign_messages(signs)
+function! s:save_sign_messages(signs, makeprg)
     for sign in a:signs
         if !has_key(s:accio_sign_messages, sign.bufnr)
             let s:accio_sign_messages[sign.bufnr] = {}
         endif
         let tab_spaces = repeat(' ', &tabstop)
+        let message_prefix = printf("[Accio - %s] ", a:makeprg)
         let msg = get(sign, "text", "No error message available...")
         let msg = substitute(msg, '\n', ' ', 'g')
         let msg = substitute(msg, '\t', tab_spaces, 'g')
         let msg = strpart(msg, 0, &columns - 1)
-        let s:accio_sign_messages[sign.bufnr][sign.lnum] = "[Accio] " . msg
+        let s:accio_sign_messages[sign.bufnr][sign.lnum] = message_prefix . msg
     endfor
 endfunction
 
