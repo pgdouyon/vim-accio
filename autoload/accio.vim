@@ -32,10 +32,11 @@ function! accio#accio(args, ...)
     else
         let clear_quickfix = a:0 ? a:1 : 1
         call s:setup_accio(makeprg, makeprg_target, clear_quickfix)
+        let make_command = join([makeprg, makeargs])
         let job_name = s:get_job_name(makeprg, makeprg_target)
         execute printf("autocmd! JobActivity %s call <SID>job_handler('%s', '%s', '%s')",
                     \ job_name, makeprg, makeprg_target, &l:errorformat)
-        call jobstart(job_name, makeprg, split(makeargs))
+        call jobstart(job_name, &sh, ['-c', make_command])
         call s:process_arglist(rest)
         let s:in_progress = 1 + len(rest)
     endif
