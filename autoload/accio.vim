@@ -17,11 +17,11 @@ let s:job_prefix = 'accio_'
 let s:sign_id_prefix = '954'
 let s:in_progress = 0
 let s:accio_queue = []
-let s:accio_signs = {}
+let s:accio_jobs = {}
 let s:accio_sign_messages = {}
 
 
-function! accio#accio(args, ...)
+function! accio#accio(args)
     let save_makeprg = &l:makeprg
     let save_errorformat = &l:errorformat
     let [args; rest] = s:parse_accio_args(a:args)
@@ -30,14 +30,12 @@ function! accio#accio(args, ...)
     if s:in_progress
         call add(s:accio_queue, [a:args, makeprg_target])
     else
-        let clear_quickfix = a:0 ? a:1 : 1
-        call s:setup_accio(makeprg, makeprg_target, clear_quickfix)
+        let s:quickfix_cleared = 0
+        let accio_job = s:new_accio_job(makeprg, makeprg_target, &l:errorformat)
         let make_command = join([makeprg, makeargs])
-        let job_name = s:get_job_name(makeprg, makeprg_target)
-        execute printf("autocmd! JobActivity %s call <SID>job_handler('%s', '%s', '%s')",
-                    \ job_name, makeprg, makeprg_target, &l:errorformat)
-        call jobstart(job_name, &sh, ['-c', make_command])
+        call s:start_job(accio_job, make_command)
         call s:process_arglist(rest)
+        let s:accio_jobs[makeprg_target][makeprg] = accio_job
         let s:in_progress = 1 + len(rest)
     endif
     let &l:makeprg = save_makeprg
@@ -69,18 +67,26 @@ function! s:parse_makeprg(compiler, args)
 endfunction
 
 
-function! s:setup_accio(makeprg, makeprg_target, clear_quickfix)
-    if !has_key(s:accio_signs, a:makeprg)
-        let s:accio_signs[a:makeprg] = {}
+function! s:new_accio_job(makeprg, makeprg_target, errorformat)
+    if !has_key(s:accio_jobs, a:makeprg_target)
+        let s:accio_jobs[a:makeprg_target] = {}
     endif
+    let template = {"signs": [], "errors": []}
+    let accio_job = get(s:accio_jobs[a:makeprg_target], a:makeprg, template)
+    let accio_job.makeprg = a:makeprg
+    let accio_job.makeprg_target = a:makeprg_target
+    let accio_job.errorformat = a:errorformat
+    let accio_job.is_initialized = 0
+    return accio_job
+endfunction
 
-    if a:clear_quickfix
-        cgetexpr []
-    endif
-    let signs = get(s:accio_signs[a:makeprg], a:makeprg_target, [])
-    let s:accio_signs[a:makeprg][a:makeprg_target] = []
-    call s:unplace_signs(signs)
-    call s:clear_sign_messages(signs)
+
+function! s:start_job(accio_job, make_command)
+    let makeprg = a:accio_job.makeprg
+    let makeprg_target = a:accio_job.makeprg_target
+    let job_name = s:get_job_name(makeprg, makeprg_target)
+    execute printf("autocmd! JobActivity %s call <SID>job_handler('%s', '%s')", job_name, makeprg, makeprg_target)
+    call jobstart(job_name, &sh, ['-c', a:make_command])
 endfunction
 
 
@@ -90,26 +96,45 @@ endfunction
 
 
 function! s:process_arglist(rest)
-    for arg in a:rest
-        call accio#accio(arg, 0)
+    for args in a:rest
+        call accio#accio(args)
         let s:in_progress = 0
     endfor
 endfunction
 
 
-function! s:job_handler(makeprg, makeprg_target, errorformat)
+function! s:job_handler(makeprg, makeprg_target)
+    let accio_job = s:accio_jobs[a:makeprg_target][a:makeprg]
+    if !accio_job.is_initialized | call s:initialize_accio_job(accio_job) | endif
+    if !s:quickfix_cleared | call s:initialize_quickfix() | endif
     if v:job_data[1] ==# "exit"
         let s:in_progress -= 1
         execute "autocmd! JobActivity " . s:get_job_name(a:makeprg, a:makeprg_target)
         call s:accio_process_queue()
     else
-        let errors = s:add_to_error_window(v:job_data[2], a:errorformat)
+        let errors = s:add_to_error_window(v:job_data[2], accio_job.errorformat)
         let signs = filter(errors, 'v:val.bufnr > 0 && v:val.lnum > 0')
+        let [accio_job.errors, accio_job.signs] += [errors, signs]
         call s:place_signs(signs)
         call s:save_sign_messages(signs)
-        call extend(s:accio_signs[a:makeprg][a:makeprg_target], signs)
         execute "cwindow | " winnr() " wincmd w"
     endif
+endfunction
+
+
+function! s:initialize_accio_job(accio_job)
+    let old_signs = a:accio_job.signs
+    let a:accio_job.signs = []
+    let a:accio_job.errors = []
+    let a:accio_job.is_initialized = 1
+    call s:unplace_signs(old_signs)
+    call s:clear_sign_messages(old_signs)
+endfunction
+
+
+function! s:initialize_quickfix()
+    cgetexpr []
+    let s:quickfix_cleared = 1
 endfunction
 
 
