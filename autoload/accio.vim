@@ -15,7 +15,7 @@ set cpoptions&vim
 " ----------------------------------------------------------------------
 let s:job_prefix = 'accio_'
 let s:sign_id_prefix = '954'
-let s:in_progress = 0
+let s:jobs_in_progress = 0
 let s:accio_queue = []
 let s:accio_jobs = {}
 let s:accio_messages = {}
@@ -27,7 +27,7 @@ function! accio#accio(args)
     let [args; rest] = s:parse_accio_args(a:args)
     let [accio_prg, accio_args] = matchlist(args, '^\(\S*\)\s*\(.*\)')[1:2]
     let [makeprg, makeargs, makeprg_target] = s:parse_makeprg(accio_prg, accio_args)
-    if s:in_progress
+    if s:jobs_in_progress
         call add(s:accio_queue, [a:args, makeprg_target])
     else
         let s:quickfix_cleared = 0
@@ -36,7 +36,7 @@ function! accio#accio(args)
         call s:start_job(accio_job, make_command)
         call s:process_arglist(rest)
         let s:accio_jobs[makeprg_target][makeprg] = accio_job
-        let s:in_progress = 1 + len(rest)
+        let s:jobs_in_progress = 1 + len(rest)
     endif
     let &l:makeprg = save_makeprg
     let &l:errorformat = save_errorformat
@@ -98,7 +98,7 @@ endfunction
 function! s:process_arglist(rest)
     for args in a:rest
         call accio#accio(args)
-        let s:in_progress = 0
+        let s:jobs_in_progress = 0
     endfor
 endfunction
 
@@ -108,7 +108,7 @@ function! s:job_handler(makeprg, makeprg_target)
     if !accio_job.is_initialized | call s:initialize_accio_job(accio_job) | endif
     if !s:quickfix_cleared | call s:initialize_quickfix() | endif
     if v:job_data[1] ==# "exit"
-        let s:in_progress -= 1
+        let s:jobs_in_progress -= 1
         execute "autocmd! JobActivity " . s:get_job_name(a:makeprg, a:makeprg_target)
         call s:accio_process_queue()
     else
