@@ -61,12 +61,12 @@ function! s:accio(args, ...)
         call jobstart(job_name, makeprg, split(makeargs))
         for prg in rest
             call s:accio(prg, 0)
+            let s:in_progress = 0
         endfor
+        let s:in_progress = 1 + len(rest)
     endif
     let &l:makeprg = save_makeprg
     let &l:errorformat = save_errorformat
-
-    let s:in_progress = 1
 endfunction
 
 
@@ -92,7 +92,7 @@ endfunction
 
 function! s:job_handler(makeprg, makeprg_target, errorformat)
     if v:job_data[1] ==# "exit"
-        let s:in_progress = 0
+        let s:in_progress -= 1
         execute "autocmd! JobActivity " . s:get_job_name(a:makeprg, a:makeprg_target)
         call s:accio_process_queue()
     else
