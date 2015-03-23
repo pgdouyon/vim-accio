@@ -228,5 +228,23 @@ function! accio#statusline()
     return statusline . error_count
 endfunction
 
+
+function! accio#next_warning(forward, visual_mode) abort
+    let current_line = line(".")
+    let bufnr = bufnr("%")
+    let warning_lines = keys(s:accio_messages[bufnr])
+    let [prev, next] = [min(warning_lines), max(warning_lines)]
+    for wl in warning_lines
+        if wl < current_line
+            let prev = max([prev, wl])
+        elseif wl > current_line
+            let next = min([next, wl])
+        endif
+    endfor
+    let target = a:forward ? next : prev
+    let visual_mode = a:visual_mode ? "gv" : ""
+    execute "normal!" visual_mode . target . "G"
+endfunction
+
 let &cpoptions = s:save_cpo
 unlet s:save_cpo
