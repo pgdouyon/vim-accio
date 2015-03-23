@@ -141,10 +141,12 @@ endfunction
 function! s:add_to_error_window(error_lines, errorformat)
     let save_errorformat = &g:errorformat
     let &g:errorformat = a:errorformat
-    caddexpr a:error_lines
-    let errors = getqflist()
+    let initial_errors = getqflist()
+    colder | cgetexpr a:error_lines
+    let new_errors = getqflist()
+    colder | cgetexpr extend(initial_errors, new_errors)
     let &g:errorformat = save_errorformat
-    return errors
+    return new_errors
 endfunction
 
 
