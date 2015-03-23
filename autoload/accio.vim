@@ -3,7 +3,7 @@
 "Description: Neovim job-control wrapper around :compiler and :make
 "Maintainer:  Pierre-Guy Douyon <pgdouyon@alum.mit.edu>
 "Version:     1.0.0
-"Last Change: 2015-03-20
+"Last Change: 2015-03-23
 "License:     MIT
 "==============================================================================
 
@@ -13,7 +13,7 @@ set cpoptions&vim
 " ----------------------------------------------------------------------
 " Configuration and Defaults
 " ----------------------------------------------------------------------
-let s:job_prefix = 'accio_'
+let s:job_prefix = 'accio'
 let s:sign_id_prefix = '954'
 let s:jobs_in_progress = 0
 let s:accio_queue = []
@@ -25,17 +25,16 @@ function! accio#accio(args)
     let save_makeprg = &l:makeprg
     let save_errorformat = &l:errorformat
     let [args; rest] = s:parse_accio_args(a:args)
-    let [accio_prg, accio_args] = matchlist(args, '^\(\S*\)\s*\(.*\)')[1:2]
-    let [makeprg, makeargs, makeprg_target] = s:parse_makeprg(accio_prg, accio_args)
+    let [compiler, compiler_args] = matchlist(args, '^\(\S*\)\s*\(.*\)')[1:2]
+    let [make_command, make_target] = s:parse_makeprg(compiler, compiler_args)
     if s:jobs_in_progress
-        call add(s:accio_queue, [a:args, makeprg_target])
+        call add(s:accio_queue, [a:args, make_target])
     else
         let s:quickfix_cleared = 0
-        let accio_job = s:new_accio_job(makeprg, makeprg_target, &l:errorformat)
-        let make_command = join([makeprg, makeargs])
+        let accio_job = s:new_accio_job(compiler, make_target, &l:errorformat)
         call s:start_job(accio_job, make_command)
         call s:process_arglist(rest)
-        let s:accio_jobs[makeprg_target][makeprg] = accio_job
+        let s:accio_jobs[make_target][compiler] = accio_job
         let s:jobs_in_progress = 1 + len(rest)
     endif
     let &l:makeprg = save_makeprg
@@ -62,19 +61,20 @@ function! s:parse_makeprg(compiler, args)
     let makeargs = substitute(makeargs, '\\\@<!\%(%\|#\)\%(:[phtre~.S]\)*', '\=expand(submatch(0))', 'g')
     let local_make_re = '[^\\]\%(%\|#\)'
     let is_make_local = (&l:makeprg =~# local_make_re) || (a:args =~# local_make_re)
-    let makeprg_target = (is_make_local ? bufnr("%") : "global")
-    return [makeprg, makeargs, makeprg_target]
+    let make_target = (is_make_local ? bufnr("%") : "global")
+    let make_command = join([makeprg, makeargs])
+    return [make_command, make_target]
 endfunction
 
 
-function! s:new_accio_job(makeprg, makeprg_target, errorformat)
-    if !has_key(s:accio_jobs, a:makeprg_target)
-        let s:accio_jobs[a:makeprg_target] = {}
+function! s:new_accio_job(compiler, make_target, errorformat)
+    if !has_key(s:accio_jobs, a:make_target)
+        let s:accio_jobs[a:make_target] = {}
     endif
     let template = {"signs": [], "errors": []}
-    let accio_job = get(s:accio_jobs[a:makeprg_target], a:makeprg, template)
-    let accio_job.makeprg = a:makeprg
-    let accio_job.makeprg_target = a:makeprg_target
+    let accio_job = get(s:accio_jobs[a:make_target], a:compiler, template)
+    let accio_job.compiler = a:compiler
+    let accio_job.make_target = a:make_target
     let accio_job.errorformat = a:errorformat
     let accio_job.is_initialized = 0
     return accio_job
@@ -82,16 +82,16 @@ endfunction
 
 
 function! s:start_job(accio_job, make_command)
-    let makeprg = a:accio_job.makeprg
-    let makeprg_target = a:accio_job.makeprg_target
-    let job_name = s:get_job_name(makeprg, makeprg_target)
-    execute printf("autocmd! JobActivity %s call <SID>job_handler('%s', '%s')", job_name, makeprg, makeprg_target)
+    let compiler = a:accio_job.compiler
+    let make_target = a:accio_job.make_target
+    let job_name = s:get_job_name(compiler, make_target)
+    execute printf("autocmd! JobActivity %s call <SID>job_handler('%s', '%s')", job_name, compiler, make_target)
     call jobstart(job_name, &sh, ['-c', a:make_command])
 endfunction
 
 
-function! s:get_job_name(makeprg, makeprg_target)
-    return s:job_prefix . a:makeprg . "_" . a:makeprg_target
+function! s:get_job_name(compiler, make_target)
+    return join([s:job_prefix, a:compiler, a:make_target], "_")
 endfunction
 
 
@@ -103,20 +103,20 @@ function! s:process_arglist(rest)
 endfunction
 
 
-function! s:job_handler(makeprg, makeprg_target)
-    let accio_job = s:accio_jobs[a:makeprg_target][a:makeprg]
+function! s:job_handler(compiler, make_target)
+    let accio_job = s:accio_jobs[a:make_target][a:compiler]
     if !accio_job.is_initialized | call s:initialize_accio_job(accio_job) | endif
     if !s:quickfix_cleared | call s:initialize_quickfix() | endif
     if v:job_data[1] ==# "exit"
         let s:jobs_in_progress -= 1
-        execute "autocmd! JobActivity " . s:get_job_name(a:makeprg, a:makeprg_target)
+        execute "autocmd! JobActivity " . s:get_job_name(a:compiler, a:make_target)
         call s:accio_process_queue()
     else
         let errors = s:add_to_error_window(v:job_data[2], accio_job.errorformat)
         let signs = filter(errors, 'v:val.bufnr > 0 && v:val.lnum > 0')
         let [accio_job.errors, accio_job.signs] += [errors, signs]
         call s:place_signs(signs)
-        call s:save_sign_messages(signs, a:makeprg)
+        call s:save_sign_messages(signs, a:compiler)
     endif
     execute "cwindow | " winnr() " wincmd w"
 endfunction
@@ -162,13 +162,13 @@ function! s:place_signs(errors)
 endfunction
 
 
-function! s:save_sign_messages(signs, makeprg)
+function! s:save_sign_messages(signs, compiler)
     for sign in a:signs
         if !has_key(s:accio_messages, sign.bufnr)
             let s:accio_messages[sign.bufnr] = {}
         endif
         let tab_spaces = repeat(' ', &tabstop)
-        let message_prefix = printf("[Accio - %s] ", a:makeprg)
+        let message_prefix = printf("[Accio - %s] ", a:compiler)
         let msg = get(sign, "text", "No error message available...")
         let msg = substitute(msg, '\n', ' ', 'g')
         let msg = substitute(msg, '\t', tab_spaces, 'g')
