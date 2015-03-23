@@ -15,6 +15,8 @@ let g:loaded_accio = 1
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
+let g:accio_auto_copen = get(g:, "accio_auto_copen", 0)
+
 sign define AccioError text=>> texthl=Error
 sign define AccioWarning text=>> texthl=IncSearch
 
