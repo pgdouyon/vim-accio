@@ -17,6 +17,7 @@ let s:job_prefix = 'accio'
 let s:accio_sign_id = '954'
 let s:jobs_in_progress = 0
 let s:accio_queue = []
+let s:accio_quickfix_list = []
 let s:accio_jobs = {}
 let s:accio_messages = {}
 
@@ -135,8 +136,13 @@ endfunction
 
 
 function! s:initialize_quickfix()
-    cgetexpr []
+    if s:is_accio_quickfix_list()
+        call setqflist([], "r")
+    else
+        call setqflist([])
+    endif
     let s:quickfix_cleared = 1
+    let s:accio_quickfix_list = []
 endfunction
 
 
@@ -146,9 +152,15 @@ function! s:add_to_error_window(error_lines, errorformat)
     let initial_errors = getqflist() | call setqflist([], "r")
     caddexpr a:error_lines
     let new_errors = getqflist() | call setqflist([], "r")
-    call setqflist(extend(initial_errors, new_errors), "a")
+    let s:accio_quickfix_list = extend(initial_errors, new_errors)
+    call setqflist(s:accio_quickfix_list, "a")
     let &g:errorformat = save_errorformat
     return new_errors
+endfunction
+
+
+function! s:is_accio_quickfix_list()
+    return (getqflist() ==# s:accio_quickfix_list)
 endfunction
 
 
