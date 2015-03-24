@@ -147,6 +147,9 @@ endfunction
 
 
 function! s:add_to_error_window(error_lines, errorformat)
+    if !s:is_accio_quickfix_list()
+        call setqflist(s:accio_quickfix_list)
+    endif
     let save_errorformat = &g:errorformat
     let &g:errorformat = a:errorformat
     let initial_errors = getqflist() | call setqflist([], "r")
