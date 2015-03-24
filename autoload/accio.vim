@@ -118,8 +118,8 @@ function! s:job_handler(compiler, make_target)
         call s:place_signs(signs)
         call s:save_sign_messages(signs, a:compiler)
     endif
-    if g:accio_auto_copen
-        execute "cwindow | " winnr() " wincmd w"
+    if g:accio_auto_copen && !empty(getqflist())
+        execute printf("copen %d | %d wincmd w", len(getqflist()), winnr())
     endif
 endfunction
 
