@@ -14,7 +14,7 @@ set cpoptions&vim
 " Configuration and Defaults
 " ----------------------------------------------------------------------
 let s:job_prefix = 'accio'
-let s:sign_id_prefix = '954'
+let s:accio_sign_id = '954'
 let s:jobs_in_progress = 0
 let s:accio_queue = []
 let s:accio_jobs = {}
@@ -154,7 +154,7 @@ endfunction
 
 function! s:place_signs(errors)
     for error in a:errors
-        let id = error.bufnr . s:sign_id_prefix . error.lnum
+        let id = error.bufnr . s:accio_sign_id . error.lnum
         let sign_type = get(error, "type", "E")
         let sign_name = (sign_type =~? '^[EF]') ? "AccioError" : "AccioWarning"
         let sign = {"id": id, "lnum": error.lnum, "name": sign_name, "bufnr": error.bufnr}
@@ -195,7 +195,7 @@ endfunction
 
 function! s:unplace_signs(signs)
     for sign in a:signs
-        let id = sign.bufnr . s:sign_id_prefix . sign.lnum
+        let id = sign.bufnr . s:accio_sign_id . sign.lnum
         execute "sign unplace " . id . " buffer=" . sign.bufnr
     endfor
 endfunction
