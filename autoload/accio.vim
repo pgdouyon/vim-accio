@@ -226,15 +226,14 @@ endfunction
 
 
 function! s:accio_process_queue()
-    let save_buffer = bufnr("%")
-    call uniq(sort(s:accio_queue))
-    for call_args in s:accio_queue
-        let accio_args = call_args[0]
-        let target_buffer = call_args[1]
+    if !empty(s:accio_queue)
+        call uniq(sort(s:accio_queue))
+        let save_buffer = bufnr("%")
+        let [accio_args, target_buffer] = s:accio_queue[0]
         execute "silent! buffer " . target_buffer
         call accio#accio(accio_args)
-    endfor
-    execute "buffer " save_buffer
+        execute "buffer " save_buffer
+    endif
 endfunction
 
 
