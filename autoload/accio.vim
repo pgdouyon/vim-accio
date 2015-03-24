@@ -28,7 +28,7 @@ function! accio#accio(args)
     let [compiler, compiler_args] = matchlist(args, '^\(\S*\)\s*\(.*\)')[1:2]
     let [make_command, make_target] = s:parse_makeprg(compiler, compiler_args)
     if s:jobs_in_progress
-        call add(s:accio_queue, [a:args, make_target])
+        call add(s:accio_queue, [a:args, bufnr("%")])
     else
         let s:quickfix_cleared = 0
         let accio_job = s:new_accio_job(compiler, make_target, &l:errorformat)
