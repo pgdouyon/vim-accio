@@ -18,7 +18,7 @@ let s:accio_sign_id = '954'
 let s:jobs_in_progress = 0
 let s:accio_queue = []
 let s:accio_quickfix_list = []
-let s:accio_jobs = {}
+let s:compiler_tasks = {}
 let s:accio_messages = {}
 
 
@@ -27,15 +27,15 @@ function! accio#accio(args)
     let save_errorformat = &l:errorformat
     let [args; rest] = s:parse_accio_args(a:args)
     let [compiler, compiler_args] = matchlist(args, '^\(\S*\)\s*\(.*\)')[1:2]
-    let [make_command, make_target] = s:parse_makeprg(compiler, compiler_args)
+    let [compiler_command, compiler_target] = s:parse_makeprg(compiler, compiler_args)
     if s:jobs_in_progress
         call add(s:accio_queue, [a:args, bufnr("%")])
     else
         let s:quickfix_cleared = 0
-        let accio_job = s:new_accio_job(compiler, make_target, &l:errorformat)
-        call s:start_job(accio_job, make_command)
+        let compiler_task = s:new_compiler_task(compiler, compiler_target, &l:errorformat)
+        call s:start_job(compiler_task, compiler_command)
         call s:process_arglist(rest)
-        let s:accio_jobs[make_target][compiler] = accio_job
+        let s:accio_jobs[compiler_target][compiler] = compiler_task
         let s:jobs_in_progress = 1 + len(rest)
     endif
     let &l:makeprg = save_makeprg
@@ -62,37 +62,37 @@ function! s:parse_makeprg(compiler, args)
     let makeargs = substitute(makeargs, '\\\@<!\%(%\|#\)\%(:[phtre~.S]\)*', '\=expand(submatch(0))', 'g')
     let local_make_re = '[^\\]\%(%\|#\)'
     let is_make_local = (&l:makeprg =~# local_make_re) || (a:args =~# local_make_re)
-    let make_target = (is_make_local ? bufnr("%") : "global")
-    let make_command = join([makeprg, makeargs])
-    return [make_command, make_target]
+    let compiler_target = (is_make_local ? bufnr("%") : "global")
+    let compiler_command = join([makeprg, makeargs])
+    return [compiler_command, compiler_target]
 endfunction
 
 
-function! s:new_accio_job(compiler, make_target, errorformat)
-    if !has_key(s:accio_jobs, a:make_target)
-        let s:accio_jobs[a:make_target] = {}
+function! s:new_compiler_task(compiler, compiler_target, errorformat)
+    if !has_key(s:compiler_tasks, a:compiler_target)
+        let s:compiler_tasks[a:compiler_target] = {}
     endif
     let template = {"signs": [], "errors": []}
-    let accio_job = get(s:accio_jobs[a:make_target], a:compiler, template)
-    let accio_job.compiler = a:compiler
-    let accio_job.make_target = a:make_target
-    let accio_job.errorformat = a:errorformat
-    let accio_job.is_initialized = 0
-    return accio_job
+    let compiler_task = get(s:compiler_tasks[a:compiler_target], a:compiler, template)
+    let compiler_task.compiler = a:compiler
+    let compiler_task.compiler_target = a:compiler_target
+    let compiler_task.errorformat = a:errorformat
+    let compiler_task.is_initialized = 0
+    return compiler_task
 endfunction
 
 
-function! s:start_job(accio_job, make_command)
-    let compiler = a:accio_job.compiler
-    let make_target = a:accio_job.make_target
-    let job_name = s:get_job_name(compiler, make_target)
-    execute printf("autocmd! JobActivity %s call <SID>job_handler('%s', '%s')", job_name, compiler, make_target)
-    call jobstart(job_name, &sh, ['-c', a:make_command])
+function! s:start_job(compiler_task, compiler_command)
+    let compiler = a:compiler_task.compiler
+    let compiler_target = a:compiler_task.compiler_target
+    let job_name = s:get_job_name(compiler, compiler_target)
+    execute printf("autocmd! JobActivity %s call <SID>job_handler('%s', '%s')", job_name, compiler, compiler_target)
+    call jobstart(job_name, &sh, ['-c', a:compiler_command])
 endfunction
 
 
-function! s:get_job_name(compiler, make_target)
-    return join([s:job_prefix, a:compiler, a:make_target], "_")
+function! s:get_job_name(compiler, compiler_target)
+    return join([s:job_prefix, a:compiler, a:compiler_target], "_")
 endfunction
 
 
@@ -104,18 +104,18 @@ function! s:process_arglist(rest)
 endfunction
 
 
-function! s:job_handler(compiler, make_target)
-    let accio_job = s:accio_jobs[a:make_target][a:compiler]
-    if !accio_job.is_initialized | call s:initialize_accio_job(accio_job) | endif
+function! s:job_handler(compiler, compiler_target)
+    let compiler_task = s:compiler_tasks[a:compiler_target][a:compiler]
+    if !compiler_task.is_initialized | call s:initialize_compiler_task(compiler_task) | endif
     if !s:quickfix_cleared | call s:initialize_quickfix() | endif
     if v:job_data[1] ==# "exit"
         let s:jobs_in_progress -= 1
-        execute "autocmd! JobActivity " . s:get_job_name(a:compiler, a:make_target)
+        execute "autocmd! JobActivity " . s:get_job_name(a:compiler, a:compiler_target)
         call s:accio_process_queue()
     else
-        let errors = s:add_to_error_window(v:job_data[2], accio_job.errorformat)
+        let errors = s:add_to_error_window(v:job_data[2], compiler_task.errorformat)
         let signs = filter(errors, 'v:val.bufnr > 0 && v:val.lnum > 0')
-        let [accio_job.errors, accio_job.signs] += [errors, signs]
+        let [compiler_task.errors, compiler_task.signs] += [errors, signs]
         call s:place_signs(signs)
         call s:save_sign_messages(signs, a:compiler)
     endif
@@ -125,11 +125,11 @@ function! s:job_handler(compiler, make_target)
 endfunction
 
 
-function! s:initialize_accio_job(accio_job)
-    let old_signs = a:accio_job.signs
-    let a:accio_job.signs = []
-    let a:accio_job.errors = []
-    let a:accio_job.is_initialized = 1
+function! s:initialize_compiler_task(compiler_task)
+    let old_signs = a:compiler_task.signs
+    let a:compiler_task.signs = []
+    let a:compiler_task.errors = []
+    let a:compiler_task.is_initialized = 1
     call s:unplace_signs(old_signs)
     call s:clear_sign_messages(old_signs)
 endfunction
