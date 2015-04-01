@@ -129,10 +129,7 @@ function! s:job_handler(compiler, compiler_target)
         call s:accio_process_queue()
     else
         let errors = s:add_to_error_window(v:job_data[2], compiler_task.errorformat)
-        let signs = filter(errors, 'v:val.bufnr > 0 && v:val.lnum > 0')
-        let [compiler_task.errors, compiler_task.signs] += [errors, signs]
-        call s:place_signs(signs)
-        call s:save_sign_messages(signs, a:compiler)
+        call s:update_signs(compiler_task, errors)
     endif
     call s:cwindow()
 endfunction
@@ -177,6 +174,15 @@ endfunction
 
 function! s:is_accio_quickfix_list()
     return (getqflist() ==# s:accio_quickfix_list)
+endfunction
+
+
+function! s:update_signs(compiler_task, errors)
+    let errors = a:errors
+    let signs = filter(errors, 'v:val.bufnr > 0 && v:val.lnum > 0')
+    let [a:compiler_task.errors, a:compiler_task.signs] += [errors, signs]
+    call s:place_signs(a:compiler_task.signs)
+    call s:save_sign_messages(a:compiler_task.signs, a:compiler_task.compiler)
 endfunction
 
 
