@@ -60,11 +60,17 @@ function! s:parse_makeprg(compiler, args)
     let [makeprg, makeargs] = matchlist(&l:makeprg, '^\s*\(\S*\)\s*\(.*\)')[1:2]
     let makeargs = (makeargs =~ '\$\*') ? substitute(makeargs, '\$\*', escape(a:args, '&\'), 'g') : makeargs." ".a:args
     let makeargs = substitute(makeargs, '\\\@<!\%(%\|#\)\%(:[phtre~.S]\)*', '\=expand(submatch(0))', 'g')
-    let local_make_re = '[^\\]\%(%\|#\)'
-    let is_make_local = (&l:makeprg =~# local_make_re) || (a:args =~# local_make_re)
-    let compiler_target = (is_make_local ? bufnr("%") : "global")
     let compiler_command = join([makeprg, makeargs])
+    let compiler_target = s:get_compiler_target(&l:makeprg, a:args)
     return [compiler_command, compiler_target]
+endfunction
+
+
+function! s:get_compiler_target(makeprg, args)
+    let local_make_re = '[^\\]\%(%\|#\)'
+    let is_make_local = (a:makeprg =~# local_make_re) || (a:args =~# local_make_re)
+    let compiler_target = (is_make_local ? bufnr("%") : "global")
+    return compiler_target
 endfunction
 
 
