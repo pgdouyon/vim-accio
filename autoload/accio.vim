@@ -32,8 +32,8 @@ function! accio#accio(args)
         call add(s:accio_queue, [a:args, bufnr("%")])
     else
         let s:quickfix_cleared = 0
-        let compiler_task = s:new_compiler_task(compiler, compiler_target, &l:errorformat)
-        call s:start_job(compiler_task, compiler_command)
+        let compiler_task = s:new_compiler_task(compiler, compiler_target, compiler_command, &l:errorformat)
+        call s:start_job(compiler_task)
         call s:process_arglist(rest)
         call s:save_compiler_task(compiler, compiler_target, compiler_task)
         let s:jobs_in_progress = 1 + len(rest)
@@ -68,11 +68,12 @@ function! s:parse_makeprg(compiler, args)
 endfunction
 
 
-function! s:new_compiler_task(compiler, compiler_target, errorformat)
+function! s:new_compiler_task(compiler, compiler_target, compiler_command, errorformat)
     let template = {"signs": [], "errors": []}
     let compiler_task = s:get_compiler_task(a:compiler, a:compiler_target, template)
     let compiler_task.compiler = a:compiler
     let compiler_task.compiler_target = a:compiler_target
+    let compiler_task.compiler_command = a:compiler_command
     let compiler_task.errorformat = a:errorformat
     let compiler_task.is_initialized = 0
     return compiler_task
@@ -96,12 +97,12 @@ function! s:save_compiler_task(compiler, compiler_target, compiler_task)
 endfunction
 
 
-function! s:start_job(compiler_task, compiler_command)
+function! s:start_job(compiler_task)
     let compiler = a:compiler_task.compiler
     let compiler_target = a:compiler_task.compiler_target
     let job_name = s:get_job_name(compiler, compiler_target)
     execute printf("autocmd! JobActivity %s call <SID>job_handler('%s', '%s')", job_name, compiler, compiler_target)
-    call jobstart(job_name, &sh, ['-c', a:compiler_command])
+    call jobstart(job_name, &sh, ['-c', a:compiler_task.compiler_command])
 endfunction
 
 
