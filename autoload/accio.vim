@@ -35,7 +35,7 @@ function! accio#accio(args)
         let compiler_task = s:new_compiler_task(compiler, compiler_target, compiler_command, &l:errorformat)
         call s:start_job(compiler_task)
         call s:process_arglist(rest)
-        call s:save_compiler_task(compiler, compiler_target, compiler_task)
+        call s:save_compiler_task(compiler_task)
         let s:jobs_in_progress = 1 + len(rest)
     endif
     let &l:makeprg = save_makeprg
@@ -89,11 +89,11 @@ function! s:get_compiler_task(compiler, compiler_target, ...)
 endfunction
 
 
-function! s:save_compiler_task(compiler, compiler_target, compiler_task)
-    if !has_key(s:compiler_tasks, a:compiler_target)
-        let s:compiler_tasks[a:compiler_target] = {}
+function! s:save_compiler_task(compiler_task)
+    if !has_key(s:compiler_tasks, a:compiler_task.compiler_target)
+        let s:compiler_tasks[a:compiler_task.compiler_target] = {}
     endif
-    let s:compiler_tasks[a:compiler_target][a:compiler] = a:compiler_task
+    let s:compiler_tasks[a:compiler_task.compiler_target][a:compiler_task.compiler] = a:compiler_task
 endfunction
 
 
