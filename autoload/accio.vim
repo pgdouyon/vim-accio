@@ -35,7 +35,7 @@ function! accio#accio(args)
         let compiler_task = s:new_compiler_task(compiler, compiler_target, &l:errorformat)
         call s:start_job(compiler_task, compiler_command)
         call s:process_arglist(rest)
-        let s:accio_jobs[compiler_target][compiler] = compiler_task
+        call s:save_compiler_task(compiler, compiler_target, compiler_task)
         let s:jobs_in_progress = 1 + len(rest)
     endif
     let &l:makeprg = save_makeprg
@@ -69,16 +69,30 @@ endfunction
 
 
 function! s:new_compiler_task(compiler, compiler_target, errorformat)
-    if !has_key(s:compiler_tasks, a:compiler_target)
-        let s:compiler_tasks[a:compiler_target] = {}
-    endif
     let template = {"signs": [], "errors": []}
-    let compiler_task = get(s:compiler_tasks[a:compiler_target], a:compiler, template)
+    let compiler_task = s:get_compiler_task(a:compiler, a:compiler_target, template)
     let compiler_task.compiler = a:compiler
     let compiler_task.compiler_target = a:compiler_target
     let compiler_task.errorformat = a:errorformat
     let compiler_task.is_initialized = 0
     return compiler_task
+endfunction
+
+
+function! s:get_compiler_task(compiler, compiler_target, ...)
+    if !has_key(s:compiler_tasks, a:compiler_target)
+        let s:compiler_tasks[a:compiler_target] = {}
+    endif
+    let default = (a:0 ? a:1 : s:new_compiler_task(a:compiler, a:compiler_target, &l:errorformat))
+    return get(s:compiler_tasks[a:compiler_target], a:compiler, default)
+endfunction
+
+
+function! s:save_compiler_task(compiler, compiler_target, compiler_task)
+    if !has_key(s:compiler_tasks, a:compiler_target)
+        let s:compiler_tasks[a:compiler_target] = {}
+    endif
+    let s:compiler_tasks[a:compiler_target][a:compiler] = a:compiler_task
 endfunction
 
 
@@ -105,7 +119,7 @@ endfunction
 
 
 function! s:job_handler(compiler, compiler_target)
-    let compiler_task = s:compiler_tasks[a:compiler_target][a:compiler]
+    let compiler_task = s:get_compiler_task(a:compiler, a:compiler_target)
     if !compiler_task.is_initialized | call s:initialize_compiler_task(compiler_task) | endif
     if !s:quickfix_cleared | call s:initialize_quickfix() | endif
     if v:job_data[1] ==# "exit"
