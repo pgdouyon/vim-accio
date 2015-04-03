@@ -303,7 +303,7 @@ endfunction
 function! accio#next_warning(forward, visual_mode) abort
     let current_line = line(".")
     let bufnr = bufnr("%")
-    let warning_lines = keys(s:accio_messages[bufnr])
+    let warning_lines = keys(get(s:accio_messages, bufnr, {}))
     let [prev, next] = [min(warning_lines), max(warning_lines)]
     for wl in warning_lines
         if wl < current_line
@@ -313,8 +313,9 @@ function! accio#next_warning(forward, visual_mode) abort
         endif
     endfor
     let target = a:forward ? next : prev
+    let jump_command = (target > 0 ? target."G" : "")
     let visual_mode = a:visual_mode ? "gv" : ""
-    execute "normal!" visual_mode . target . "G"
+    execute "normal!" visual_mode . jump_command
 endfunction
 
 let &cpoptions = s:save_cpo
