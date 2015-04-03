@@ -212,6 +212,7 @@ function! s:update_signs(compiler_task, errors)
     let [a:compiler_task.errors, a:compiler_task.signs] += [errors, signs]
     call s:place_signs(a:compiler_task.signs)
     call s:save_sign_messages(a:compiler_task.signs, a:compiler_task.compiler)
+    call accio#echo_message()
 endfunction
 
 
