@@ -31,6 +31,8 @@ onoremap <silent> <Plug>AccioNextWarning :<C-U>call accio#next_warning(1, 0)<CR>
 if !hasmapto("<Plug>AccioPrevWarning") && !hasmapto("<Plug>AccioNextWarning")
     map [w <Plug>AccioPrevWarning
     map ]w <Plug>AccioNextWarning
+    sunmap [w
+    sunmap ]w
 endif
 
 augroup accio
