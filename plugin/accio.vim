@@ -7,7 +7,7 @@
 "License:     MIT
 "==============================================================================
 
-if exists("g:loaded_accio") || !has("nvim")
+if exists("g:loaded_accio")
     finish
 endif
 let g:loaded_accio = 1
@@ -38,7 +38,11 @@ augroup accio
     autocmd CursorMoved * call accio#echo_message()
 augroup END
 
-command! -nargs=+ -complete=compiler Accio call accio#accio(<q-args>)
+if has("nvim")
+    command! -nargs=+ -complete=compiler Accio call accio#accio(<q-args>)
+else
+    command! -nargs=+ -complete=compiler Accio call accio#accio_vim(<q-args>)
+endif
 
 let &cpoptions = s:save_cpo
 unlet s:save_cpo

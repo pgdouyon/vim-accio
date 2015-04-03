@@ -43,6 +43,29 @@ function! accio#accio(args)
 endfunction
 
 
+function! accio#accio_vim(args)
+    let save_makeprg = &l:makeprg
+    let save_errorformat = &l:errorformat
+    call s:initialize_quickfix()
+    for arg in s:parse_accio_args(a:args)
+        let [compiler, compiler_args] = matchlist(arg, '^\(\S*\)\s*\(.*\)')[1:2]
+        execute printf("silent! colder | compiler %s | silent noautocmd make! %s | redraw!", compiler, compiler_args)
+        let errors = getqflist()
+        let compiler_target = s:get_compiler_target(&l:makeprg, compiler_args)
+        let compiler_task = s:new_compiler_task(compiler, compiler_target, &l:makeprg, &l:errorformat)
+        call s:initialize_compiler_task(compiler_task)
+        call s:update_signs(compiler_task, errors)
+        call s:save_compiler_task(compiler_task)
+        call extend(s:accio_quickfix_list, errors)
+    endfor
+    let &l:makeprg = save_makeprg
+    let &l:errorformat = save_errorformat
+    call setqflist(s:accio_quickfix_list, "r")
+    call s:cwindow()
+    doautocmd QuickFixCmdPost make
+endfunction
+
+
 function! s:parse_accio_args(args)
     if a:args[0] ==# "[" && a:args[-1:] ==# "]"
         let args = eval(a:args)[0]
