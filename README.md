@@ -5,7 +5,7 @@ Accio asynchronously *summons* build/compiler/linter output to your screen by
 wrapping the `:compiler` and `:make` commands with [Neovim][]'s job control
 API.  Output from these programs is displayed in the following ways:
 
-1. The quickfix list
+1. Populating the quickfix list
 2. Placing signs on the error lines
 3. Echoing the error message when the cursor is on an error line.
 
@@ -22,13 +22,11 @@ writing your own is fairly straightforward (`:h write-compiler-plugin`).
 
 To run a single compiler plugin just pass its name to Accio:
 
-- `:Accio <compiler>`
 - i.e. `:Accio javac`
 
 To run multiple compiler plugins at once and aggregrate their results into one
 quickfix list, pass a list of compiler names to Accio:
 
-- `:Accio ["<compiler1>", "<compiler2>"]`
 - i.e. `:Accio ["javac", "checkstyle"]`
 - Note: the compiler names must be quoted, otherwise Vim will attempt to
   resolve them as variable names and throw an error
@@ -77,7 +75,7 @@ if exists(":CompilerSet") != 2		" older Vim always used :setlocal
 endif
 
 let $CLASSPATH=b:loaded_javac_classpath
-CompilerSet makeprg=javac\ -d\ $PROJECTS_HOME/trash\ %
+CompilerSet makeprg=javac\ -d\ $PROJECT_HOME/tmp\ %
 CompilerSet errorformat=%E%f:%l:\ %m,%-Z%p^,%-C%.%#,%-G%.%#
 ```
 
@@ -90,13 +88,12 @@ through Accio with the command `:Accio IntelliJ`.
 - Accio provides mappings to jump to the next/previous error line.  By default
   these are mapped to `[w` and `]w` (mnemonic: warning) but can be remapped
   using the `<Plug>` mappings.
-    - `<Plug>AccioPrevWarning`
-    - `<Plug>AccioNextWarning`
+    - `<Plug>AccioPrevWarning` and `<Plug>AccioNextWarning`
 - Accio provides a statusline function that will report the number of errors in
   the current buffer.
     - `set statusline+=%#WarningMsg#%{accio#statusline()}%*`
 - By default, Accio does not open the quickfix list when invoked.  You can
-  change this via the `g:accio_auto_copen` variable:
+  change this behavior with the following line:
     - `let g:accio_auto_copen = 1`
 
 
@@ -120,9 +117,8 @@ through Accio with the command `:Accio IntelliJ`.
       operation or error reporting.
     - If anyone ever ends up actually using this plugin I would still entertain
       arguments in favor of the location list, just open up an issue about it.
-    - For anyone worried about Accio trashing their quickfix list, Accio tries
-      to reuse the quickfix list (rather than constantly creating a new one),
-      to avoid filling up all of the saved quickfix lists with Accio lists.
+    - For anyone worried about Accio trashing their quickfix list, Accio makes
+      an effort to reuse the quickfix list wherever possible.
 - Neomake is essentially a superset of Accio.  My plan for Accio is to be a
   lightweight alternative to Neomake that hopefully feels like it gives more
   control over your compilers/linters.
