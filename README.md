@@ -51,18 +51,19 @@ classpath.
 
 One solution is to use a compiler plugin to help determine the classpath for
 each individual buffer.  Below is an example javac compiler plugin for
-determining the classpath in a maven project:
+determining the classpath in a maven project with Git as the VCS and using
+Fugitive to locate the project root folder:
 
 ```vim
 let current_compiler = "IntelliJ"
 
 function! s:get_classpath()
-    let project_home_pattern = '\V' . escape($PROJECT_HOME, '\') . '/\[^/]\*/'
-    let project_home = matchstr(expand("%:p"), project_home_pattern)
-    let classpath_cmd = printf("cd %s && mvn dependency:build-classpath", shellescape(project_home))
+    let project_git_dir = fugitive#extract_git_dir(expand("%:p"))
+    let project_root = fnamemodify(project_git_dir, ":h")
+    let classpath_cmd = printf("cd %s && mvn dependency:build-classpath", shellescape(project_root))
     let classpath_pattern = 'classpath:\n\zs[^[].\{-\}\ze\n'
     let maven_output = system(classpath_cmd)
-    let classpath = project_home . "/target/classes:" . matchstr(maven_output, classpath_pattern)
+    let classpath = project_root . "/target/classes:" . matchstr(maven_output, classpath_pattern)
     return classpath
 endfunction
 
@@ -75,7 +76,7 @@ if exists(":CompilerSet") != 2		" older Vim always used :setlocal
 endif
 
 let $CLASSPATH=b:loaded_javac_classpath
-CompilerSet makeprg=javac\ -d\ $PROJECT_HOME/tmp\ %
+CompilerSet makeprg=javac
 CompilerSet errorformat=%E%f:%l:\ %m,%-Z%p^,%-C%.%#,%-G%.%#
 ```
 
@@ -85,7 +86,7 @@ through Accio with the command `:Accio IntelliJ`.
 
 #### Configuration and Features
 
-- Accio provides mappings to jump to the next/previous error line.  By default
+- Accio provides mappings to jump to the previous/next error line.  By default
   these are mapped to `[w` and `]w` (mnemonic: warning) but can be remapped
   using the `<Plug>` mappings.
     - `<Plug>AccioPrevWarning` and `<Plug>AccioNextWarning`
@@ -100,28 +101,31 @@ through Accio with the command `:Accio IntelliJ`.
 
 ### Differences from [Neomake][]
 
-- Neomake ships with pre-configured makers and also allows you to specify your
-  own makers.
-    - I personally don't like the idea of pre-configured checkers (and I think
-      I'm in the minority here) and have found compiler plugins to be much more
-      flexible and easier to use.
-    - This is pretty much the principal difference between Neomake and Accio
-      and the reason I made this plugin in the first place.
-- Neomake does support compiler plugins, but you still have to run the
-  `:compiler` command separately.  Accio bundles the `:compiler` and `:make`
-  commands into one.
-- Neomake uses both the quickfix list and location list depending on which
-  version of the command you run.  Accio only uses the quickfix list.
-    - I've put a lot of thought into it and come to the conclusion that the
-      transience of location lists are not a good fit for asynchronous
-      operation or error reporting.
-    - If anyone ever ends up actually using this plugin I would still entertain
-      arguments in favor of the location list, just open up an issue about it.
-    - For anyone worried about Accio trashing their quickfix list, Accio makes
-      an effort to reuse the quickfix list wherever possible.
-- Neomake is essentially a superset of Accio.  My plan for Accio is to be a
-  lightweight alternative to Neomake that hopefully feels like it gives more
-  control over your compilers/linters.
+Neomake is essentially a superset of Accio and there's really no reason to use
+Accio over Neomake unless you're a control freak like me with an irrational
+hatred of pre-configured makers.
+
+My plan for Accio is to be a lightweight alternative to Neomake that hopefully
+feels like it gives more control/flexibility over your compilers/linters.
+
+The other main difference between the two plugins is that Neomake uses both the
+quickfix list and location list depending on which version of the command you
+run.  Accio will only use the quickfix list for all possible invocations.
+
+- I've put a lot of thought into it and come to the conclusion that the
+transience of location lists are not a good fit for asynchronous
+operation or error reporting.
+- If anyone ever ends up actually using this plugin I would still entertain
+arguments in favor of the location list, just open up an issue about it.
+- For anyone worried about Accio trashing their quickfix list, Accio makes
+an effort to reuse the quickfix list wherever possible.
+
+**Note:** Neomake does support compiler plugins in addition to pre-configured
+makers, but you still have to run the `:compiler` command separately.  Accio
+saves a step by bundling the `:compiler` and `:make` commands into one.
+
+- If you want to use more than one compiler plugin, you can't get around
+    this by setting the compiler per filetype.
 
 
 Installation
