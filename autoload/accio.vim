@@ -113,7 +113,7 @@ function! s:get_compiler_task(compiler, compiler_target, ...)
     if !has_key(s:compiler_tasks, a:compiler_target)
         let s:compiler_tasks[a:compiler_target] = {}
     endif
-    let default = (a:0 ? a:1 : s:new_compiler_task(a:compiler, a:compiler_target, &l:errorformat))
+    let default = (a:0 ? a:1 : s:new_compiler_task(a:compiler, a:compiler_target, &l:makeprg, &l:errorformat))
     return get(s:compiler_tasks[a:compiler_target], a:compiler, default)
 endfunction
 
