@@ -127,11 +127,10 @@ endfunction
 
 
 function! s:start_job(compiler_task)
-    let compiler = a:compiler_task.compiler
-    let compiler_target = a:compiler_task.target
-    let job_name = s:get_job_name(compiler, compiler_target)
-    execute printf("autocmd! JobActivity %s call <SID>job_handler('%s', '%s')", job_name, compiler, compiler_target)
-    call jobstart(job_name, &sh, ['-c', a:compiler_task.command])
+    let job_args = [&shell, '-c', a:compiler_task.command]
+    let job_opts = {'compiler_task': a:compiler_task}
+    call extend(job_opts, s:job_control_callbacks)
+    call jobstart(job_args, job_opts)
 endfunction
 
 
@@ -148,21 +147,26 @@ function! s:process_arglist(rest)
 endfunction
 
 
-function! s:job_handler(compiler, compiler_target)
-    let compiler_task = s:get_compiler_task(a:compiler, a:compiler_target)
+function! s:job_handler(id, data, event)
+    let compiler_task = self.compiler_task
     if !compiler_task.is_initialized | call s:initialize_compiler_task(compiler_task) | endif
     if !s:quickfix_cleared | call s:initialize_quickfix() | endif
-    if v:job_data[1] ==# "exit"
+    if a:event ==# "exit"
         let s:jobs_in_progress -= 1
-        execute "autocmd! JobActivity " . s:get_job_name(a:compiler, a:compiler_target)
         call s:accio_process_queue()
     else
-        let errors = s:add_to_error_window(v:job_data[2], compiler_task.errorformat)
+        let errors = s:add_to_error_window(a:data, compiler_task.errorformat)
         call s:update_signs(compiler_task, errors)
     endif
     call s:cwindow()
 endfunction
 
+
+let s:job_control_callbacks = {
+    \ 'on_stdout': function('s:job_handler'),
+    \ 'on_stderr': function('s:job_handler'),
+    \ 'on_exit': function('s:job_handler'),
+    \ }
 
 function! s:initialize_compiler_task(compiler_task)
     let old_signs = a:compiler_task.signs
