@@ -320,7 +320,7 @@ function! accio#next_warning(forward, visual_mode) abort
     let target = a:forward ? next : prev
     let jump_command = (target > 0 ? target."G" : "")
     let visual_mode = a:visual_mode ? "gv" : ""
-    execute "normal!" visual_mode . jump_command
+    execute "silent! normal!" visual_mode . jump_command
 endfunction
 
 let &cpoptions = s:save_cpo
