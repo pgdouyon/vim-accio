@@ -5,9 +5,9 @@ Accio asynchronously *summons* build/compiler/linter output to your screen by
 wrapping the `:compiler` and `:make` commands with [Neovim][]'s job control
 API.  Output from these programs is displayed in the following ways:
 
-1. Populating the quickfix list
-2. Placing signs on the error lines
-3. Echoing the error message when the cursor is on an error line.
+- Populating the quickfix list
+- Placing signs on the error lines
+- Echoing the error message when the cursor is on an error line.
 
 Note: Accio also provides a synchronous version of its API for Vim.
 
