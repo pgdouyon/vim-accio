@@ -13,7 +13,6 @@ set cpoptions&vim
 " ----------------------------------------------------------------------
 " Configuration and Defaults
 " ----------------------------------------------------------------------
-let s:job_prefix = 'accio'
 let s:accio_sign_id = '954'
 let s:jobs_in_progress = 0
 let s:accio_queue = []
@@ -131,11 +130,6 @@ function! s:start_job(compiler_task)
     let job_opts = {'compiler_task': a:compiler_task}
     call extend(job_opts, s:job_control_callbacks)
     call jobstart(job_args, job_opts)
-endfunction
-
-
-function! s:get_job_name(compiler, compiler_target)
-    return join([s:job_prefix, a:compiler, a:compiler_target], "_")
 endfunction
 
 
