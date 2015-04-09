@@ -66,17 +66,16 @@ endfunction
 function! accio#next_warning(forward, visual_mode) abort
     let current_line = line(".")
     let bufnr = bufnr("%")
-    let warning_lines = keys(get(s:accio_messages, bufnr, {}))
-    let [prev, next] = [min(warning_lines), max(warning_lines)]
-    for wl in warning_lines
-        if wl < current_line
-            let prev = max([prev, wl])
-        elseif wl > current_line
-            let next = min([next, wl])
-        endif
-    endfor
-    let target = a:forward ? next : prev
-    let jump_command = (target > 0 ? target."G" : "")
+    let warning_lines = map(keys(get(s:accio_messages, bufnr, {})), 'str2nr(v:val)')
+    let sorted_lines = uniq(sort(add(warning_lines, current_line), 'n'))
+    let current_index = index(sorted_lines, current_line)
+    if a:forward
+        let target_index = min([current_index + v:count1, len(sorted_lines) - 1])
+    else
+        let target_index = max([current_index - v:count1, 0])
+    endif
+    let target = sorted_lines[target_index]
+    let jump_command = (target == current_line ? "" : target."G")
     let visual_mode = a:visual_mode ? "gv" : ""
     execute "silent! normal!" visual_mode . jump_command
 endfunction
