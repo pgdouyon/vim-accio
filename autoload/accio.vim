@@ -53,7 +53,7 @@ function! accio#accio_vim(args)
         let errors = getqflist()
         let compiler_target = s:get_compiler_target(&l:makeprg, compiler_args)
         let compiler_task = s:new_compiler_task(compiler, compiler_target, &l:makeprg, &l:errorformat)
-        call s:initialize_compiler_task(compiler_task)
+        call s:clear_display(compiler_task)
         call s:update_display(compiler_task, errors)
         call s:save_compiler_task(compiler_task)
         call extend(s:accio_quickfix_list, errors)
@@ -104,7 +104,7 @@ function! s:new_compiler_task(compiler, compiler_target, compiler_command, error
     let compiler_task.target = a:compiler_target
     let compiler_task.command = a:compiler_command
     let compiler_task.errorformat = a:errorformat
-    let compiler_task.is_initialized = 0
+    let compiler_task.is_display_cleared = 0
     return compiler_task
 endfunction
 
@@ -149,7 +149,7 @@ endfunction
 
 function! s:job_handler(id, data, event)
     let compiler_task = self.compiler_task
-    if !compiler_task.is_initialized | call s:initialize_compiler_task(compiler_task) | endif
+    if !compiler_task.is_display_cleared | call s:clear_display(compiler_task) | endif
     if !s:quickfix_cleared | call s:initialize_quickfix() | endif
     if a:event ==# "exit"
         let s:jobs_in_progress -= 1
@@ -168,11 +168,11 @@ let s:job_control_callbacks = {
     \ 'on_exit': function('s:job_handler'),
     \ }
 
-function! s:initialize_compiler_task(compiler_task)
+function! s:clear_display(compiler_task)
     let old_signs = a:compiler_task.signs
     let a:compiler_task.signs = []
     let a:compiler_task.errors = []
-    let a:compiler_task.is_initialized = 1
+    let a:compiler_task.is_display_cleared = 1
     call s:unplace_signs(old_signs)
     call s:clear_sign_messages(old_signs)
 endfunction
