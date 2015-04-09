@@ -1,4 +1,4 @@
-*accio.txt*     Neovim job-control wrapper around :compiler and :make
+*accio.txt*     Neovim wrapper around :compiler and :make              *accio*
 
 ==============================================================================
 Contents                                                      *accio-contents*
