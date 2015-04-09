@@ -54,7 +54,7 @@ function! accio#accio_vim(args)
         let compiler_target = s:get_compiler_target(&l:makeprg, compiler_args)
         let compiler_task = s:new_compiler_task(compiler, compiler_target, &l:makeprg, &l:errorformat)
         call s:initialize_compiler_task(compiler_task)
-        call s:update_signs(compiler_task, errors)
+        call s:update_display(compiler_task, errors)
         call s:save_compiler_task(compiler_task)
         call extend(s:accio_quickfix_list, errors)
     endfor
@@ -156,7 +156,7 @@ function! s:job_handler(id, data, event)
         call s:accio_process_queue()
     else
         let errors = s:add_to_error_window(a:data, compiler_task.errorformat)
-        call s:update_signs(compiler_task, errors)
+        call s:update_display(compiler_task, errors)
     endif
     call s:cwindow()
 endfunction
@@ -210,7 +210,7 @@ function! s:is_accio_quickfix_list()
 endfunction
 
 
-function! s:update_signs(compiler_task, errors)
+function! s:update_display(compiler_task, errors)
     let errors = a:errors
     let signs = filter(errors, 'v:val.bufnr > 0 && v:val.lnum > 0')
     let [a:compiler_task.errors, a:compiler_task.signs] += [errors, signs]
