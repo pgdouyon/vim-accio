@@ -1,0 +1,89 @@
+*accio.txt*     Neovim job-control wrapper around :compiler and :make
+
+==============================================================================
+Contents                                                      *accio-contents*
+
+    1. Intro............................................|accio-intro|
+    2. Options..........................................|accio-options|
+    3. Commands.........................................|accio-commands|
+    4. Mappings.........................................|accio-mappings|
+    5. Statusline.......................................|accio-statusline|
+
+==============================================================================
+Intro                                                            *accio-intro*
+
+Accio asynchronously summons build/compiler/linter output to your screen by
+wrapping the |:compiler| and |:make| commands with Neovim's job control
+API.  Output from these programs is displayed in the following ways:
+
+    - Populating the quickfix list
+    - Placing signs on the error lines
+    - Echoing the error message when the cursor is on an error line.
+
+Accio doesn't provide any pre-configured compilers/syntax checkers, instead it
+utilizes compiler plugins to run whatever build/compiler/linter programs they
+specify and parse their output.  Vim ships with several compiler plugins but
+writing your own is fairly straightforward |write-compiler-plugin|
+
+
+==============================================================================
+Options                                                        *accio-options*
+
+g:accio_auto_copen                                        *g:accio_auto_copen*
+                        If this variable is 1 Accio will automatically open the
+                        quickfix list when invoked if any errors are detected. >
+                            let g:accio_auto_copen = 1
+<
+                        The default value is 0.
+
+
+==============================================================================
+Commands                                                      *accio-commands*
+
+:Accio {arguments}                                                    *:Accio*
+                        Invokes the 'makeprg' specified by the compiler
+                        plugins passed to the command and displays any
+                        errors/warnings reported.  If |g:accio_auto_copen| is
+                        set, automatically opens the quickfix list when there
+                        are recognized errors/warnings.
+
+                        To run a single compiler plugin, simply pass its name
+                        to Accio.  To run a group of compiler plugins and
+                        aggregate their results into one quickfix list, pass
+                        the arguments as a list of compiler plugin names.
+
+                        For example: >
+
+                                :Accio javac
+                                :Accio ["javac", "checkstyle"]
+
+<                       Note: The compiler names must be quoted when passed as
+                        a list, otherwise Vim will attempt to resolve them as
+                        variable names and throw an error
+
+
+==============================================================================
+Mappings                                                      *accio-mappings*
+
+<Plug>AccioPrevWarning                                *accio-[w* *<Plug>AccioPrevWarning*
+                        Go to [count] previous line with an error/warning
+
+<Plug>AccioNextWarning                                *accio-]w* *<Plug>AccioNextWarning*
+                        Go to [count] next line with an error/warning
+
+
+==============================================================================
+Statusline                                                  *accio-statusline*
+
+accio#statusline()                                        *accio#statusline()*
+                        Accio provides a statusline function that will report
+                        the number of errors in the current buffer.
+
+                        An example statusline configuration: >
+                            set statusline+=%#WarningMsg#
+                            set statusline+=%{accio#statusline()}
+                            set statusline+=%*
+<
+
+==============================================================================
+vim:tw=78:ts=8:ft=help:norl:
