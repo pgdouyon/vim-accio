@@ -2,8 +2,6 @@
 "File:        accio.vim
 "Description: Neovim job-control wrapper around :compiler and :make
 "Maintainer:  Pierre-Guy Douyon <pgdouyon@alum.mit.edu>
-"Version:     1.0.0
-"Last Change: 2015-03-20
 "License:     MIT
 "==============================================================================
 
