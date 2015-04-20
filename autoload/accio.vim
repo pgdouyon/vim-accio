@@ -206,7 +206,8 @@ endfunction
 
 function! s:cwindow()
     if g:accio_auto_copen && !empty(getqflist())
-        execute printf("copen %d | %d wincmd w", len(getqflist()), winnr())
+        let height = min([len(getqflist()), 10])
+        execute printf("copen %d | %d wincmd w", height, winnr())
     endif
 endfunction
 
