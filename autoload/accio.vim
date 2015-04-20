@@ -10,6 +10,7 @@ set cpoptions&vim
 
 let s:accio_sign_id = '954'
 let s:jobs_in_progress = 0
+let s:accio_echoed_message = 0
 let s:accio_queue = []
 let s:accio_quickfix_list = []
 let s:compiler_tasks = {}
@@ -94,10 +95,10 @@ function! accio#echo_message()
     let message = get(buffer_messages, line("."), "")
     if !empty(message)
         echohl WarningMsg | echo message | echohl None
-        let b:accio_echoed_message = 1
-    elseif exists("b:accio_echoed_message") && b:accio_echoed_message
+        let s:accio_echoed_message = 1
+    elseif s:accio_echoed_message
         echo
-        let b:accio_echoed_message = 0
+        let s:accio_echoed_message = 0
     endif
 endfunction
 
