@@ -44,7 +44,7 @@ endfunction
 function! accio#accio_vim(args)
     let save_makeprg = &l:makeprg
     let save_errorformat = &l:errorformat
-    call s:initialize_quickfix()
+    call s:initialize_quickfix(1)
     for arg in s:parse_accio_args(a:args)
         let [compiler, compiler_args] = matchlist(arg, '^\(\S*\)\s*\(.*\)')[1:2]
         execute printf("silent! colder | compiler %s | silent noautocmd make! %s | redraw!", compiler, compiler_args)
@@ -115,9 +115,10 @@ endfunction
 
 
 function! s:job_handler(id, data, event)
+    let force = (a:event !=# "exit")
     let compiler_task = self.compiler_task
     if !compiler_task.is_display_cleared | call s:clear_display(compiler_task) | endif
-    if !s:quickfix_cleared | call s:initialize_quickfix() | endif
+    if !s:quickfix_cleared | call s:initialize_quickfix(force) | endif
     if a:event ==# "exit"
         let s:jobs_in_progress -= 1
         call s:accio_process_queue()
@@ -173,10 +174,10 @@ endfunction
 " ======================================================================
 " Quickfix List
 " ======================================================================
-function! s:initialize_quickfix()
+function! s:initialize_quickfix(force)
     if s:is_accio_quickfix_list()
         call setqflist([], "r")
-    else
+    elseif a:force
         call setqflist([])
     endif
     let s:quickfix_cleared = 1
