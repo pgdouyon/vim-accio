@@ -63,7 +63,8 @@ function! s:get_classpath()
     let classpath_cmd = printf("cd %s && mvn dependency:build-classpath", shellescape(project_root))
     let classpath_pattern = 'classpath:\n\zs[^[].\{-\}\ze\n'
     let maven_output = system(classpath_cmd)
-    let classpath = project_root . "/target/classes:" . matchstr(maven_output, classpath_pattern)
+    let maven_classes = project_root . "/target/classes:"
+    let classpath = maven_classes . matchstr(maven_output, classpath_pattern)
     return classpath
 endfunction
 
@@ -86,17 +87,22 @@ through Accio with the command `:Accio IntelliJ`.
 
 #### Configuration and Features
 
-- Accio provides mappings to jump to the previous/next error line.  By default
-  these are mapped to `[w` and `]w` (mnemonic: warning) but can be remapped
-  using the `<Plug>` mappings.
-    - `<Plug>AccioPrevWarning` and `<Plug>AccioNextWarning`
-- Accio provides a statusline function that will report the number of errors in
-  the current buffer.
-    - `set statusline+=%#WarningMsg#%{accio#statusline()}%*`
-- By default, Accio does not open the quickfix list when invoked.  You can
-  change this behavior with the following line:
-    - `let g:accio_auto_copen = 1`
-
+- `<Plug>AccioPrevWarning` and `<Plug>AccioNextWarning`
+    - Mappings to jump to the previous/next error line.
+    - By default these are mapped to `[w` and `]w` (mnemonic: warning).
+- `accio#statusline()`
+    - Statusline function that will report the number of errors in the current
+      buffer.
+    - Example usage: `set statusline+=%#WarningMsg#%{accio#statusline()}%*`
+- `g:accio_auto_copen`
+    - Set to 1 to automatically open the quickfix list when the Accio command
+      is invoked, 0 otherwise.
+- `g:accio_error_highlight`
+    - Sets the highlight group used for displaying Error signs, default is
+      "Error".
+- `g:accio_warning_highlight`
+    - Sets the highlight group used for displaying Error signs, default is
+      "IncSearch".
 
 
 ### Differences from [Neomake][]

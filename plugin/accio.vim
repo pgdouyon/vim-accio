@@ -14,9 +14,11 @@ let s:save_cpo = &cpoptions
 set cpoptions&vim
 
 let g:accio_auto_copen = get(g:, "accio_auto_copen", 0)
+let g:accio_error_highlight = get(g:, "accio_error_highlight", "Error")
+let g:accio_warning_highlight = get(g:, "accio_warning_highlight", "IncSearch")
 
-sign define AccioError text=>> texthl=Error
-sign define AccioWarning text=>> texthl=IncSearch
+execute "sign define AccioError text=>> texthl=".g:accio_error_highlight
+execute "sign define AccioWarning text=>> texthl=".g:accio_warning_highlight
 
 nnoremap <silent> <Plug>AccioPrevWarning :<C-U>call accio#next_warning(0, 0)<CR>
 xnoremap <silent> <Plug>AccioPrevWarning :<C-U>call accio#next_warning(0, 1)<CR>

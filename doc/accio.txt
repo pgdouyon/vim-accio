@@ -36,6 +36,20 @@ g:accio_auto_copen                                        *g:accio_auto_copen*
 <
                         The default value is 0.
 
+g:accio_error_highlight                              *g:accio_error_highlight*
+                        Set this variable to change the highlight group used
+                        for displaying Error signs. >
+                            let g:accio_error_highlight = "WarningMsg"
+<
+                        The default value is "Error"
+
+g:accio_warning_highlight                          *g:accio_warning_highlight*
+                        Set this variable to change the highlight group used
+                        for displaying Warning signs. >
+                            let g:accio_error_highlight = "Todo"
+<
+                        The default value is "IncSearch"
+
 
 ==============================================================================
 Commands                                                      *accio-commands*
