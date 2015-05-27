@@ -191,7 +191,7 @@ function! s:add_to_error_window(error_lines, errorformat)
     let save_errorformat = &g:errorformat
     let &g:errorformat = a:errorformat
     let initial_errors = getqflist() | call setqflist([], "r")
-    caddexpr a:error_lines
+    caddexpr filter(a:error_lines, 'v:val !~# "^\\s*$"')
     let new_errors = getqflist() | call setqflist([], "r")
     let s:accio_quickfix_list = extend(initial_errors, new_errors)
     call setqflist(s:accio_quickfix_list, "a")
