@@ -60,7 +60,6 @@ function! accio#accio_vim(args)
     let &l:errorformat = save_errorformat
     call setqflist(s:accio_quickfix_list, "r")
     call s:cwindow()
-    doautocmd QuickFixCmdPost make
 endfunction
 
 
