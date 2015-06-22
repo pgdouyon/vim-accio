@@ -13,6 +13,7 @@ let s:jobs_in_progress = 0
 let s:accio_echoed_message = 0
 let s:accio_queue = []
 let s:accio_quickfix_list = []
+let s:accio_compiler_task_ids = []
 let s:compiler_tasks = {}
 let s:accio_messages = {}
 
@@ -48,13 +49,14 @@ function! accio#accio_vim(args)
     for arg in s:parse_accio_args(a:args)
         let [compiler, compiler_args] = matchlist(arg, '^\(\S*\)\s*\(.*\)')[1:2]
         execute printf("silent! colder | compiler %s | silent noautocmd make! %s | redraw!", compiler, compiler_args)
-        let errors = getqflist()
+        let qflist = getqflist()
         let compiler_target = s:get_compiler_target(&l:makeprg, compiler_args)
         let compiler_task = s:new_compiler_task(compiler, compiler_target, &l:makeprg, &l:errorformat)
         call s:clear_display(compiler_task)
-        call s:update_display(compiler_task, errors)
+        let compiler_task.qflist = qflist
+        call s:update_display(compiler_task)
         call s:save_compiler_task(compiler_task)
-        call extend(s:accio_quickfix_list, errors)
+        call extend(s:accio_quickfix_list, qflist)
     endfor
     let &l:makeprg = save_makeprg
     let &l:errorformat = save_errorformat
@@ -122,8 +124,9 @@ function! s:job_handler(id, data, event)
         let s:jobs_in_progress -= 1
         call s:accio_process_queue()
     else
-        let errors = s:add_to_error_window(a:data, compiler_task.errorformat)
-        call s:update_display(compiler_task, errors)
+        call s:save_compiler_output(compiler_task, a:data)
+        call s:parse_quickfix_errors(compiler_task)
+        call s:update_display(compiler_task)
     endif
     call s:cwindow()
 endfunction
@@ -181,22 +184,26 @@ function! s:initialize_quickfix(force)
     endif
     let s:quickfix_cleared = 1
     let s:accio_quickfix_list = []
+    let s:accio_compiler_task_ids = []
 endfunction
 
 
-function! s:add_to_error_window(error_lines, errorformat)
-    if !s:is_accio_quickfix_list()
-        call setqflist(s:accio_quickfix_list)
-    endif
+function! s:parse_quickfix_errors(compiler_task)
+    let quickfix_list = []
     let save_errorformat = &g:errorformat
-    let &g:errorformat = a:errorformat
-    let initial_errors = getqflist() | call setqflist([], "r")
-    caddexpr filter(a:error_lines, 'v:val !~# "^\\s*$"')
-    let new_errors = getqflist() | call setqflist([], "r")
-    let s:accio_quickfix_list = extend(initial_errors, new_errors)
-    call setqflist(s:accio_quickfix_list, "a")
+    let compiler_task_id = [a:compiler_task.compiler, a:compiler_task.target]
+    call uniq(sort(add(s:accio_compiler_task_ids, compiler_task_id)))
+    for [compiler, target] in s:accio_compiler_task_ids
+        let compiler_task = s:get_compiler_task(compiler, target)
+        let &g:errorformat = compiler_task.errorformat
+        call setqflist([], "r")
+        caddexpr compiler_task.output
+        let compiler_task.qflist = getqflist()
+        let quickfix_list += getqflist()
+    endfor
+    call setqflist(quickfix_list, "r")
+    let s:accio_quickfix_list = quickfix_list
     let &g:errorformat = save_errorformat
-    return new_errors
 endfunction
 
 
@@ -221,12 +228,13 @@ endfunction
 " Compiler Task API
 " ======================================================================
 function! s:new_compiler_task(compiler, compiler_target, compiler_command, errorformat)
-    let template = {"signs": [], "errors": []}
+    let template = {"signs": [], "qflist": []}
     let compiler_task = s:get_compiler_task(a:compiler, a:compiler_target, template)
     let compiler_task.compiler = a:compiler
     let compiler_task.target = a:compiler_target
     let compiler_task.command = a:compiler_command
     let compiler_task.errorformat = a:errorformat
+    let compiler_task.output = []
     let compiler_task.is_display_cleared = 0
     return compiler_task
 endfunction
@@ -236,7 +244,7 @@ function! s:get_compiler_task(compiler, compiler_target, ...)
     if !has_key(s:compiler_tasks, a:compiler_target)
         let s:compiler_tasks[a:compiler_target] = {}
     endif
-    let default = (a:0 ? a:1 : s:new_compiler_task(a:compiler, a:compiler_target, &l:makeprg, &l:errorformat))
+    let default = (a:0 ? a:1 : {})
     return get(s:compiler_tasks[a:compiler_target], a:compiler, default)
 endfunction
 
@@ -249,13 +257,19 @@ function! s:save_compiler_task(compiler_task)
 endfunction
 
 
+function! s:save_compiler_output(compiler_task, compiler_output)
+    let output = filter(a:compiler_output, 'v:val !~# "^\\s*$"')
+    let a:compiler_task.output += output
+endfunction
+
+
 " ======================================================================
 " Display Functions
 " ======================================================================
 function! s:clear_display(compiler_task)
     let old_signs = a:compiler_task.signs
     let a:compiler_task.signs = []
-    let a:compiler_task.errors = []
+    let a:compiler_task.qflist = []
     let a:compiler_task.is_display_cleared = 1
     call s:unplace_signs(old_signs)
     call s:clear_sign_messages(old_signs)
@@ -279,10 +293,9 @@ function! s:clear_sign_messages(signs)
 endfunction
 
 
-function! s:update_display(compiler_task, errors)
-    let errors = a:errors
-    let signs = filter(errors, 'v:val.bufnr > 0 && v:val.lnum > 0')
-    let [a:compiler_task.errors, a:compiler_task.signs] += [errors, signs]
+function! s:update_display(compiler_task)
+    let signs = filter(copy(a:compiler_task.qflist), 'v:val.bufnr > 0 && v:val.lnum > 0')
+    let a:compiler_task.signs += signs
     call s:place_signs(a:compiler_task.signs)
     call s:save_sign_messages(a:compiler_task.signs, a:compiler_task.compiler)
     call accio#echo_message()
