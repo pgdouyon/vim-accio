@@ -214,7 +214,7 @@ endfunction
 
 function! s:cwindow()
     if g:accio_auto_copen
-        if empty(getqflist())
+        if empty(getqflist()) && s:jobs_in_progress == 0
             cclose
         else
             let height = min([len(getqflist()), 10])
