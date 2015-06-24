@@ -82,7 +82,7 @@ CompilerSet errorformat=%E%f:%l:\ %m,%-Z%p^,%-C%.%#,%-G%.%#
 ```
 
 Save this script to `$HOME/.vim/compiler/IntelliJ.vim` and it can be run
-through Accio with the command `:Accio IntelliJ`.
+through Accio with the command `:Accio IntelliJ %`.
 
 
 #### Configuration and Features
