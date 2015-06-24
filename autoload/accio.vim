@@ -126,6 +126,7 @@ function! s:job_handler(id, data, event)
     else
         call s:save_compiler_output(compiler_task, a:data)
         call s:parse_quickfix_errors(compiler_task)
+        call s:update_quickfix_list(compiler_task)
         call s:update_display(compiler_task)
     endif
     call s:cwindow()
@@ -189,21 +190,27 @@ endfunction
 
 
 function! s:parse_quickfix_errors(compiler_task)
-    let quickfix_list = []
+    let save_quickfix_list = getqflist()
     let save_errorformat = &g:errorformat
+    let &g:errorformat = a:compiler_task.errorformat
+    call setqflist([], "r")
+    caddexpr a:compiler_task.output
+    let a:compiler_task.qflist = getqflist()
+    let &g:errorformat = save_errorformat
+    call setqflist(save_quickfix_list, "r")
+endfunction
+
+
+function! s:update_quickfix_list(compiler_task)
+    let quickfix_list = []
     let compiler_task_id = [a:compiler_task.compiler, a:compiler_task.target]
     call uniq(sort(add(s:accio_compiler_task_ids, compiler_task_id)))
     for [compiler, target] in s:accio_compiler_task_ids
         let compiler_task = s:get_compiler_task(compiler, target)
-        let &g:errorformat = compiler_task.errorformat
-        call setqflist([], "r")
-        caddexpr compiler_task.output
-        let compiler_task.qflist = getqflist()
-        let quickfix_list += getqflist()
+        let quickfix_list += compiler_task.qflist
     endfor
-    call setqflist(quickfix_list, "r")
     let s:accio_quickfix_list = quickfix_list
-    let &g:errorformat = save_errorformat
+    call setqflist(s:accio_quickfix_list, "r")
 endfunction
 
 
