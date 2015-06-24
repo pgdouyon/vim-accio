@@ -97,6 +97,9 @@ through Accio with the command `:Accio IntelliJ`.
 - `g:accio_auto_copen`
     - Set to 1 to automatically open the quickfix list when the Accio command
       is invoked, 0 otherwise.
+- `g:accio_create_empty_quickfix`
+    - Set to 0 to prevent Accio from creating new quickfix lists when there are
+      no errors to report (Accio reuses its own quickfix lists), 1 otherwise.
 - `g:accio_error_highlight`
     - Sets the highlight group used for displaying Error signs, default is
       "Error".

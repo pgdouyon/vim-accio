@@ -36,6 +36,19 @@ g:accio_auto_copen                                        *g:accio_auto_copen*
 <
                         The default value is 0.
 
+g:accio_create_empty_quickfix                  *g:accio_create_empty_quickfix*
+                        Accio will always reuse its own quickfix list, but if
+                        the current quickfix list was populated by another
+                        command then Accio creates a brand-new quickfix list
+                        by default even if there are no errors to report.
+
+                        Set this variable to 0 to only create new quickfix
+                        lists when Accio has errors to report.
+
+                        Note: This only applies to the Neovim version.  The
+                        Vim version of Accio ignores this option and always
+                        creates a new quickfix list.
+
 g:accio_error_highlight                              *g:accio_error_highlight*
                         Set this variable to change the highlight group used
                         for displaying Error signs. >

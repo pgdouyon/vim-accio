@@ -31,6 +31,7 @@ function! accio#accio(args)
         call add(s:accio_queue, [a:args, bufnr("%")])
     else
         let s:quickfix_cleared = 0
+        let s:accio_compiler_task_ids = []
         let compiler_task = s:new_compiler_task(compiler, compiler_target, compiler_command, &l:errorformat)
         call s:start_job(compiler_task)
         call s:process_arglist(rest)
@@ -45,7 +46,7 @@ endfunction
 function! accio#accio_vim(args)
     let save_makeprg = &l:makeprg
     let save_errorformat = &l:errorformat
-    call s:initialize_quickfix(1)
+    call s:set_quickfix_list([])
     for arg in s:parse_accio_args(a:args)
         let [compiler, compiler_args] = matchlist(arg, '^\(\S*\)\s*\(.*\)')[1:2]
         execute printf("silent! colder | compiler %s | silent noautocmd make! %s | redraw!", compiler, compiler_args)
@@ -116,10 +117,8 @@ endfunction
 
 
 function! s:job_handler(id, data, event)
-    let force = (a:event !=# "exit")
     let compiler_task = self.compiler_task
     if !compiler_task.is_display_cleared | call s:clear_display(compiler_task) | endif
-    if !s:quickfix_cleared | call s:initialize_quickfix(force) | endif
     if a:event ==# "exit"
         let s:jobs_in_progress -= 1
         call s:accio_process_queue()
@@ -177,15 +176,14 @@ endfunction
 " ======================================================================
 " Quickfix List
 " ======================================================================
-function! s:initialize_quickfix(force)
-    if s:is_accio_quickfix_list()
-        call setqflist([], "r")
-    elseif a:force
-        call setqflist([])
+function! s:set_quickfix_list(qflist, ...)
+    let force_update = a:0 ? a:1 : 1
+    if s:is_accio_quickfix_list() || force_update
+        let action = s:is_accio_quickfix_list() ? "r" : " "
+        let s:accio_quickfix_list = a:qflist
+        let s:quickfix_cleared = 1
+        call setqflist(s:accio_quickfix_list, action)
     endif
-    let s:quickfix_cleared = 1
-    let s:accio_quickfix_list = []
-    let s:accio_compiler_task_ids = []
 endfunction
 
 
@@ -209,8 +207,8 @@ function! s:update_quickfix_list(compiler_task)
         let compiler_task = s:get_compiler_task(compiler, target)
         let quickfix_list += compiler_task.qflist
     endfor
-    let s:accio_quickfix_list = quickfix_list
-    call setqflist(s:accio_quickfix_list, "r")
+    let force_update = (s:quickfix_cleared || !empty(quickfix_list) || g:accio_create_empty_quickfix)
+    call s:set_quickfix_list(quickfix_list, force_update)
 endfunction
 
 

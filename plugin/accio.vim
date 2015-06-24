@@ -14,6 +14,7 @@ let s:save_cpo = &cpoptions
 set cpoptions&vim
 
 let g:accio_auto_copen = get(g:, "accio_auto_copen", 0)
+let g:accio_create_empty_quickfix = get(g:, "accio_create_empty_quickfix", 1)
 let g:accio_error_highlight = get(g:, "accio_error_highlight", "Error")
 let g:accio_warning_highlight = get(g:, "accio_warning_highlight", "IncSearch")
 
