@@ -300,7 +300,7 @@ endfunction
 
 function! s:update_display(compiler_task)
     let signs = filter(copy(a:compiler_task.qflist), 'v:val.bufnr > 0 && v:val.lnum > 0')
-    let a:compiler_task.signs += signs
+    let a:compiler_task.signs = signs
     call s:place_signs(a:compiler_task.signs)
     call s:save_sign_messages(a:compiler_task.signs, a:compiler_task.compiler)
     call accio#echo_message()
