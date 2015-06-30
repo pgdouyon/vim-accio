@@ -312,20 +312,19 @@ function! s:place_signs(errors)
         let id = error.bufnr . s:accio_sign_id . error.lnum
         let sign_type = get(error, "type", "E")
         let sign_name = (sign_type =~? '^[EF]') ? "AccioError" : "AccioWarning"
-        let sign = {"id": id, "lnum": error.lnum, "name": sign_name, "bufnr": error.bufnr}
         execute printf("sign place %d line=%d name=%s buffer=%d",
-                    \ sign.id, sign.lnum, sign.name, sign.bufnr)
+                    \ id, error.lnum, sign_name, error.bufnr)
     endfor
 endfunction
 
 
 function! s:save_sign_messages(signs, compiler)
+    let tab_spaces = repeat(' ', &tabstop)
+    let message_prefix = printf("[Accio - %s] ", a:compiler)
     for sign in a:signs
         if !has_key(s:accio_messages, sign.bufnr)
             let s:accio_messages[sign.bufnr] = {}
         endif
-        let tab_spaces = repeat(' ', &tabstop)
-        let message_prefix = printf("[Accio - %s] ", a:compiler)
         let msg = get(sign, "text", "No error message available...")
         let msg = substitute(msg, '\n', ' ', 'g')
         let msg = substitute(msg, '\t', tab_spaces, 'g')
