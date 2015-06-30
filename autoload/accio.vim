@@ -329,8 +329,8 @@ function! s:save_sign_messages(signs, compiler)
         let msg = get(sign, "text", "No error message available...")
         let msg = substitute(msg, '\n', ' ', 'g')
         let msg = substitute(msg, '\t', tab_spaces, 'g')
-        let msg = strpart(msg, 0, &columns - 1)
-        let s:accio_messages[sign.bufnr][sign.lnum] = message_prefix . msg
+        let msg = strpart(message_prefix . msg, 0, &columns - 1)
+        let s:accio_messages[sign.bufnr][sign.lnum] = msg
     endfor
 endfunction
 
