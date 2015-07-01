@@ -127,6 +127,7 @@ function! s:job_handler(id, data, event)
             call s:update_quickfix_list(compiler_task)
             call s:update_display(compiler_task)
         endif
+        call s:cleanup(compiler_task)
         call s:accio_process_queue()
     else
         call s:save_compiler_output(compiler_task, a:data)
@@ -281,6 +282,13 @@ function! s:save_compiler_output(compiler_task, compiler_output)
 endfunction
 
 
+function! s:cleanup(compiler_task)
+    " Try and reclaim some memory to avoid memory leaks
+    let a:compiler_task.output = []
+    call map(a:compiler_task.signs, '{"bufnr": v:val.bufnr, "lnum": v:val.lnum}')
+endfunction
+
+
 " ======================================================================
 " Display Functions
 " ======================================================================
@@ -375,8 +383,7 @@ endfunction
 " ======================================================================
 function! s:get_current_time()
     let time = map(split(reltimestr(reltime()), '\.'), 'str2nr(v:val)')
-    let seconds = time[0]
-    let microseconds = time[1]
+    let [seconds, microseconds] = time
     let milliseconds = (seconds * 1000) + (microseconds / 1000)
     return milliseconds
 endfunction
