@@ -49,6 +49,19 @@ g:accio_create_empty_quickfix                  *g:accio_create_empty_quickfix*
                         Vim version of Accio ignores this option and always
                         creates a new quickfix list.
 
+g:accio_update_interval                              *g:accio_update_interval*
+                        This variable represents the interval, in
+                        milliseconds, between updates to the quickfix list and
+                        displayed signs.
+
+                        Lowering this value will cause lag due to screen
+                        redraws whenever the quickfix list is open; in most
+                        cases, the lag is negligible when the quickfix list is
+                        closed. >
+                            let g:accio_update_interval = 1000
+<
+                        The default value is 500.
+
 g:accio_error_highlight                              *g:accio_error_highlight*
                         Set this variable to change the highlight group used
                         for displaying Error signs. >

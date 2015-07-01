@@ -100,6 +100,9 @@ through Accio with the command `:Accio IntelliJ %`.
 - `g:accio_create_empty_quickfix`
     - Set to 0 to prevent Accio from creating new quickfix lists when there are
       no errors to report (Accio reuses its own quickfix lists), 1 otherwise.
+- `g:accio_update_interval`
+    - Length of the interval, in milliseconds, between updates to the quickfix
+      list and displayed signs
 - `g:accio_error_highlight`
     - Sets the highlight group used for displaying Error signs, default is
       "Error".

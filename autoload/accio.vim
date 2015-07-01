@@ -121,12 +121,21 @@ function! s:job_handler(id, data, event)
     if !compiler_task.is_display_cleared | call s:clear_display(compiler_task) | endif
     if a:event ==# "exit"
         let s:jobs_in_progress -= 1
+        if !compiler_task.is_output_synced
+            let compiler_task.last_update_time = s:get_current_time()
+            call s:parse_quickfix_errors(compiler_task)
+            call s:update_quickfix_list(compiler_task)
+            call s:update_display(compiler_task)
+        endif
         call s:accio_process_queue()
     else
         call s:save_compiler_output(compiler_task, a:data)
-        call s:parse_quickfix_errors(compiler_task)
-        call s:update_quickfix_list(compiler_task)
-        call s:update_display(compiler_task)
+        if s:get_current_time() - compiler_task.last_update_time >= g:accio_update_interval
+            let compiler_task.last_update_time = s:get_current_time()
+            call s:parse_quickfix_errors(compiler_task)
+            call s:update_quickfix_list(compiler_task)
+            call s:update_display(compiler_task)
+        endif
     endif
     call s:cwindow()
 endfunction
@@ -191,25 +200,10 @@ function! s:parse_quickfix_errors(compiler_task)
     let save_quickfix_list = getqflist()
     let save_errorformat = &g:errorformat
     let &g:errorformat = a:compiler_task.errorformat
-    let partial_output = a:compiler_task.partial_nontruncated_output + a:compiler_task.truncated_output
     call setqflist([], "r")
-    caddexpr partial_output
-    let partial_qflist = getqflist()
-    let previous_last_complete_error_index = index(partial_qflist, a:compiler_task.previous_last_complete_error)
-    let previous_truncated_error_index = (previous_last_complete_error_index != -1) ? previous_last_complete_error_index + 1 : -1
-    let truncated_error_index = len(partial_qflist) - 1
-    if truncated_error_index >= previous_truncated_error_index + 2
-        let a:compiler_task.previous_last_complete_error = partial_qflist[-2]
-        let a:compiler_task.partial_nontruncated_output = a:compiler_task.truncated_output
-        let a:compiler_task.truncated_output = []
-    endif
-    if len(a:compiler_task.qflist) <= 1
-        let a:compiler_task.qflist = partial_qflist
-    else
-        let last_complete_error = remove(a:compiler_task.qflist, -2, -1)[0]
-        let last_complete_error_index = index(partial_qflist, last_complete_error)
-        call extend(a:compiler_task.qflist, partial_qflist[last_complete_error_index : ])
-    endif
+    caddexpr a:compiler_task.output
+    let a:compiler_task.qflist = getqflist()
+    let a:compiler_task.is_output_synced = 1
     let &g:errorformat = save_errorformat
     call setqflist(save_quickfix_list, "r")
 endfunction
@@ -255,10 +249,10 @@ function! s:new_compiler_task(compiler, compiler_target, compiler_command, error
     let compiler_task.target = a:compiler_target
     let compiler_task.command = a:compiler_command
     let compiler_task.errorformat = a:errorformat
-    let compiler_task.truncated_output = []
-    let compiler_task.partial_nontruncated_output = []
-    let compiler_task.previous_last_complete_error = {}
+    let compiler_task.output = []
+    let compiler_task.is_output_synced = 1
     let compiler_task.is_display_cleared = 0
+    let compiler_task.last_update_time = s:get_current_time() - (g:accio_update_interval / 2)
     return compiler_task
 endfunction
 
@@ -282,7 +276,8 @@ endfunction
 
 function! s:save_compiler_output(compiler_task, compiler_output)
     let output = filter(a:compiler_output, 'v:val !~# "^\\s*$"')
-    let a:compiler_task.truncated_output += output
+    let a:compiler_task.output += output
+    let a:compiler_task.is_output_synced = 0
 endfunction
 
 
@@ -372,6 +367,18 @@ function! s:accio_process_queue()
         call accio#accio(accio_args)
         execute "buffer " save_buffer
     endif
+endfunction
+
+
+" ======================================================================
+" Utils
+" ======================================================================
+function! s:get_current_time()
+    let time = map(split(reltimestr(reltime()), '\.'), 'str2nr(v:val)')
+    let seconds = time[0]
+    let microseconds = time[1]
+    let milliseconds = (seconds * 1000) + (microseconds / 1000)
+    return milliseconds
 endfunction
 
 let &cpoptions = s:save_cpo
