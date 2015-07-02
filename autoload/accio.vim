@@ -61,7 +61,7 @@ function! accio#accio_vim(args)
     endfor
     let &l:makeprg = save_makeprg
     let &l:errorformat = save_errorformat
-    call setqflist(s:accio_quickfix_list, "r")
+    call s:set_quickfix_list(s:accio_quickfix_list)
     call s:cwindow()
 endfunction
 
