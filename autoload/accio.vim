@@ -198,15 +198,15 @@ endfunction
 
 
 function! s:parse_quickfix_errors(compiler_task)
-    let save_quickfix_list = getqflist()
+    let save_loclist = getloclist(0)
     let save_errorformat = &g:errorformat
     let &g:errorformat = a:compiler_task.errorformat
-    call setqflist([], "r")
-    caddexpr a:compiler_task.output
-    let a:compiler_task.qflist = getqflist()
+    call setloclist(0, [], "r")
+    laddexpr a:compiler_task.output
+    let a:compiler_task.qflist = getloclist(0)
     let a:compiler_task.is_output_synced = 1
     let &g:errorformat = save_errorformat
-    call setqflist(save_quickfix_list, "r")
+    call setloclist(0, save_loclist, "r")
 endfunction
 
 
