@@ -74,7 +74,7 @@ g:accio_warning_highlight                          *g:accio_warning_highlight*
                         for displaying Warning signs. >
                             let g:accio_error_highlight = "Todo"
 <
-                        The default value is "IncSearch"
+                        The default value is "Search"
 
 
 ==============================================================================

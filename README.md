@@ -108,7 +108,7 @@ through Accio with the command `:Accio IntelliJ %`.
       "Error".
 - `g:accio_warning_highlight`
     - Sets the highlight group used for displaying Error signs, default is
-      "IncSearch".
+      "Search".
 
 
 ### Differences from [Neomake][]
