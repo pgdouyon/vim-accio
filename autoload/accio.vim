@@ -14,7 +14,8 @@ let s:accio_queue = []
 let s:accio_quickfix_list = []
 let s:accio_compiler_task_ids = []
 let s:compiler_tasks = {}
-let s:accio_messages = {}
+let s:accio_line_errors = {}
+let s:errors_by_line = {}
 
 
 " ======================================================================
@@ -68,7 +69,7 @@ endfunction
 function! accio#next_warning(forward, visual_mode) abort
     let current_line = line(".")
     let bufnr = bufnr("%")
-    let warning_lines = map(keys(get(s:accio_messages, bufnr, {})), 'str2nr(v:val)')
+    let warning_lines = map(keys(get(s:accio_line_errors, bufnr, {})), 'str2nr(v:val)')
     let sorted_lines = uniq(sort(add(warning_lines, current_line), 'n'))
     let current_index = index(sorted_lines, current_line)
     if a:forward
@@ -86,14 +87,15 @@ endfunction
 function! accio#statusline()
     let bufnr = bufnr("%")
     let statusline = "Errors: "
-    let error_count = len(get(s:accio_messages, bufnr, {}))
+    let error_count = len(get(s:accio_line_errors, bufnr, {}))
     return statusline . error_count
 endfunction
 
 
 function! accio#echo_message()
-    let buffer_messages = get(s:accio_messages, bufnr("%"), {})
-    let message = get(buffer_messages, line("."), "")
+    let buffer_line_errors = get(s:accio_line_errors, bufnr("%"), {})
+    let line_error = get(buffer_line_errors, line("."), {})
+    let message = get(line_error, "text", "")
     if !empty(message)
         echohl WarningMsg | echo message | echohl None
         let s:accio_echoed_message = 1
@@ -243,7 +245,7 @@ endfunction
 " Compiler Task API
 " ======================================================================
 function! s:new_compiler_task(compiler, compiler_target, compiler_command, errorformat)
-    let template = {"signs": [], "qflist": []}
+    let template = {"qflist": []}
     let compiler_task = s:get_compiler_task(a:compiler, a:compiler_target, template)
     let compiler_task.compiler = a:compiler
     let compiler_task.target = a:compiler_target
@@ -284,7 +286,6 @@ endfunction
 function! s:cleanup(compiler_task)
     " Try and reclaim some memory to avoid memory leaks
     let a:compiler_task.output = []
-    call map(a:compiler_task.signs, '{"bufnr": v:val.bufnr, "lnum": v:val.lnum}')
 endfunction
 
 
@@ -292,64 +293,149 @@ endfunction
 " Display Functions
 " ======================================================================
 function! s:clear_display(compiler_task)
-    call s:unplace_signs(a:compiler_task.signs, a:compiler_task.compiler)
-    call s:clear_sign_messages(a:compiler_task.signs)
-    let a:compiler_task.signs = []
+    call s:clear_compiler_errors(a:compiler_task)
     let a:compiler_task.qflist = []
     let a:compiler_task.is_display_cleared = 1
 endfunction
 
 
-function! s:unplace_signs(signs, compiler)
-    for sign in a:signs
-        let id = s:construct_sign_id(a:compiler, a:sign.lnum)
-        execute "sign unplace " . id . " buffer=" . sign.bufnr
-    endfor
-endfunction
-
-
-function! s:clear_sign_messages(signs)
-    for sign in a:signs
-        let bufnr = sign.bufnr
-        let lnum = sign.lnum
-        silent! unlet s:accio_messages[bufnr][lnum]
+function! s:clear_compiler_errors(compiler_task)
+    for error in a:compiler_task.qflist
+        let bufnr = error.bufnr
+        let lnum = error.lnum
+        if bufnr > 0 && lnum > 0
+            let compiler_to_remove = a:compiler_task.compiler
+            let errors_by_line = s:get_errors_by_line(bufnr, lnum)
+            call s:remove_errors_by_compiler(errors_by_line, compiler_to_remove)
+            call s:set_errors_by_line(bufnr, lnum, errors_by_line)
+            call s:update_line_error(bufnr, lnum, compiler_to_remove)
+        endif
     endfor
 endfunction
 
 
 function! s:update_display(compiler_task)
-    let signs = filter(copy(a:compiler_task.qflist), 'v:val.bufnr > 0 && v:val.lnum > 0')
-    let a:compiler_task.signs = signs
-    call s:place_signs(a:compiler_task.signs, a:compiler_task.compiler)
-    call s:save_sign_messages(a:compiler_task.signs, a:compiler_task.compiler)
+    let compiler_errors = copy(a:compiler_task.qflist)
+    call s:set_accio_compiler(compiler_errors, a:compiler_task.compiler)
+    call s:format_error_messages(compiler_errors, a:compiler_task.compiler)
+    call s:update_line_errors(compiler_errors, a:compiler_task.compiler)
     call accio#echo_message()
 endfunction
 
 
-function! s:place_signs(errors, compiler)
+function! s:set_accio_compiler(errors, compiler)
+    call map(a:errors, 'extend(v:val, {"accio_compiler": a:compiler})')
+endfunction
+
+
+function! s:format_error_messages(errors, compiler)
+    let tab_spaces = repeat(' ', &tabstop)
+    let message_prefix = printf("[Accio - %s] ", a:compiler)
     for error in a:errors
-        let id = s:construct_sign_id(a:compiler, a:error.lnum)
-        let sign_type = get(error, "type", "E")
-        let sign_name = (sign_type =~? '^[EF]') ? "AccioError" : "AccioWarning"
-        execute printf("sign place %d line=%d name=%s buffer=%d",
-                    \ id, error.lnum, sign_name, error.bufnr)
+        let message = get(error, "text", "No error message available...")
+        let message = substitute(message, '\n', ' ', 'g')
+        let message = substitute(message, '\t', tab_spaces, 'g')
+        let error.text = s:truncate(message_prefix . message, &columns)
     endfor
 endfunction
 
 
-function! s:save_sign_messages(signs, compiler)
-    let tab_spaces = repeat(' ', &tabstop)
-    let message_prefix = printf("[Accio - %s] ", a:compiler)
-    for sign in a:signs
-        if !has_key(s:accio_messages, sign.bufnr)
-            let s:accio_messages[sign.bufnr] = {}
+function! s:update_line_errors(errors, compiler)
+    for error in a:errors
+        let bufnr = error.bufnr
+        let lnum = error.lnum
+        if bufnr > 0 && lnum > 0
+            let current_line_error = s:get_line_error(bufnr, lnum)
+            let errors_by_line = uniq(sort(add(s:get_errors_by_line(bufnr, lnum), error)))
+            let best_error = s:get_best_error(errors_by_line)
+            call s:set_errors_by_line(bufnr, lnum, errors_by_line)
+            if current_line_error !=# best_error
+                call s:set_line_error(bufnr, lnum, best_error)
+                call s:unplace_sign(current_line_error)
+                call s:place_sign(best_error)
+            endif
         endif
-        let msg = get(sign, "text", "No error message available...")
-        let msg = substitute(msg, '\n', ' ', 'g')
-        let msg = substitute(msg, '\t', tab_spaces, 'g')
-        let msg = s:truncate(message_prefix . msg, &columns)
-        let s:accio_messages[sign.bufnr][sign.lnum] = msg
     endfor
+endfunction
+
+
+function! s:get_errors_by_line(bufnr, lnum)
+    if !has_key(s:errors_by_line, a:bufnr)
+        let s:errors_by_line[a:bufnr] = {}
+    endif
+    return get(s:errors_by_line[a:bufnr], a:lnum, [])
+endfunction
+
+
+function! s:set_errors_by_line(bufnr, lnum, errors_by_line)
+    if !has_key(s:errors_by_line, a:bufnr)
+        let s:errors_by_line[a:bufnr] = {}
+    endif
+    let s:errors_by_line[a:bufnr][a:lnum] = a:errors_by_line
+endfunction
+
+
+function! s:get_line_error(bufnr, lnum)
+    if !has_key(s:accio_line_errors, a:bufnr)
+        let s:accio_line_errors[a:bufnr] = {}
+    endif
+    return get(s:accio_line_errors[a:bufnr], a:lnum, {})
+endfunction
+
+
+function! s:set_line_error(bufnr, lnum, line_error)
+    if !has_key(s:accio_line_errors, a:bufnr)
+        let s:accio_line_errors[a:bufnr] = {}
+    endif
+    let s:accio_line_errors[a:bufnr][a:lnum] = a:line_error
+endfunction
+
+
+function! s:clear_line_error(bufnr, lnum)
+    silent! unlet s:accio_line_errors[a:bufnr][a:lnum]
+endfunction
+
+
+function! s:update_line_error(bufnr, lnum, compiler_to_remove)
+    let line_error = s:get_line_error(a:bufnr, a:lnum)
+    let errors_by_line = s:get_errors_by_line(a:bufnr, a:lnum)
+    if get(line_error, "accio_compiler", "") ==# a:compiler_to_remove
+        call s:unplace_sign(line_error)
+        call s:clear_line_error(a:bufnr, a:lnum)
+        if !empty(errors_by_line)
+            let best_error = s:get_best_error(errors_by_line)
+            call s:set_line_error(a:bufnr, a:lnum, best_error)
+            call s:place_sign(best_error)
+        endif
+    endif
+endfunction
+
+
+function! s:remove_errors_by_compiler(errors_by_line, compiler)
+    call filter(a:errors_by_line, 'get(v:val, "accio_compiler") !=# a:compiler')
+endfunction
+
+
+function! s:get_best_error(errors)
+    return sort(a:errors, function("s:sort_by_error_type"))[0]
+endfunction
+
+
+function! s:place_sign(error)
+    let sign_type = get(a:error, "type", "E")
+    let sign_name = (sign_type =~? '[EF]') ? "AccioError" : "AccioWarning"
+    let sign_id = s:construct_sign_id(a:error.accio_compiler, a:error.lnum)
+    execute printf("sign unplace %s buffer=%d", sign_id, a:error.bufnr)
+    execute printf("sign place %s line=%d name=%s buffer=%d",
+                \ sign_id, a:error.lnum, sign_name, a:error.bufnr)
+endfunction
+
+
+function! s:unplace_sign(error)
+    if !empty(a:error)
+        let sign_id = s:construct_sign_id(a:error.accio_compiler, a:error.lnum)
+        execute printf("sign unplace %d buffer=%d", sign_id, a:error.bufnr)
+    endif
 endfunction
 
 
@@ -404,6 +490,20 @@ endfunction
 function! s:hash(input_string)
     let chars = split(a:input_string, '\zs')
     return join(map(chars, 'float2nr(fmod(char2nr(v:val), 10))'), '')
+endfunction
+
+
+function! s:sort_by_error_type(error1, error2)
+    let error_type1 = get(a:error1, "type", "")
+    let error_type2 = get(a:error2, "type", "")
+    if (error_type1 ==? error_type2)
+        return get(a:error1, "col", 10000) - get(a:error2, "col", 10000)
+    elseif (error_type1 ==? "E") || (error_type2 ==? "E")
+        return (error_type2 ==? "E") - (error_type1 ==? "E")
+    elseif (error_type1 ==? "F") || (error_type2 ==? "F")
+        return (error_type2 ==? "F") - (error_type1 ==? "F")
+    endif
+    return get(a:error1, "col", 10000) - get(a:error2, "col", 10000)
 endfunction
 
 let &cpoptions = s:save_cpo
