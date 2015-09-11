@@ -349,7 +349,7 @@ function! s:save_sign_messages(signs, compiler)
         let msg = get(sign, "text", "No error message available...")
         let msg = substitute(msg, '\n', ' ', 'g')
         let msg = substitute(msg, '\t', tab_spaces, 'g')
-        let msg = strpart(message_prefix . msg, 0, &columns - 1)
+        let msg = s:truncate(message_prefix . msg, &columns)
         let s:accio_messages[sign.bufnr][sign.lnum] = msg
     endfor
 endfunction
@@ -386,6 +386,13 @@ function! s:get_current_time()
     let [seconds, microseconds] = time
     let milliseconds = (seconds * 1000) + (microseconds / 1000)
     return milliseconds
+endfunction
+
+
+function! s:truncate(string, length)
+    let nth_char = byteidx(a:string, a:length)
+    let needs_truncation = (nth_char != -1)
+    return needs_truncation ? strpart(a:string, 0, nth_char) : a:string
 endfunction
 
 let &cpoptions = s:save_cpo
