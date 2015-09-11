@@ -8,7 +8,6 @@
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
-let s:accio_sign_id = '954'
 let s:jobs_in_progress = 0
 let s:accio_echoed_message = 0
 let s:accio_queue = []
@@ -293,18 +292,17 @@ endfunction
 " Display Functions
 " ======================================================================
 function! s:clear_display(compiler_task)
-    let old_signs = a:compiler_task.signs
+    call s:unplace_signs(a:compiler_task.signs, a:compiler_task.compiler)
+    call s:clear_sign_messages(a:compiler_task.signs)
     let a:compiler_task.signs = []
     let a:compiler_task.qflist = []
     let a:compiler_task.is_display_cleared = 1
-    call s:unplace_signs(old_signs)
-    call s:clear_sign_messages(old_signs)
 endfunction
 
 
-function! s:unplace_signs(signs)
+function! s:unplace_signs(signs, compiler)
     for sign in a:signs
-        let id = sign.bufnr . s:accio_sign_id . sign.lnum
+        let id = s:construct_sign_id(a:compiler, a:sign.lnum)
         execute "sign unplace " . id . " buffer=" . sign.bufnr
     endfor
 endfunction
@@ -322,15 +320,15 @@ endfunction
 function! s:update_display(compiler_task)
     let signs = filter(copy(a:compiler_task.qflist), 'v:val.bufnr > 0 && v:val.lnum > 0')
     let a:compiler_task.signs = signs
-    call s:place_signs(a:compiler_task.signs)
+    call s:place_signs(a:compiler_task.signs, a:compiler_task.compiler)
     call s:save_sign_messages(a:compiler_task.signs, a:compiler_task.compiler)
     call accio#echo_message()
 endfunction
 
 
-function! s:place_signs(errors)
+function! s:place_signs(errors, compiler)
     for error in a:errors
-        let id = error.bufnr . s:accio_sign_id . error.lnum
+        let id = s:construct_sign_id(a:compiler, a:error.lnum)
         let sign_type = get(error, "type", "E")
         let sign_name = (sign_type =~? '^[EF]') ? "AccioError" : "AccioWarning"
         execute printf("sign place %d line=%d name=%s buffer=%d",
@@ -393,6 +391,19 @@ function! s:truncate(string, length)
     let nth_char = byteidx(a:string, a:length)
     let needs_truncation = (nth_char != -1)
     return needs_truncation ? strpart(a:string, 0, nth_char) : a:string
+endfunction
+
+
+function! s:construct_sign_id(compiler, lnum)
+    let sign_id_max_length = 9
+    let sign_id = a:lnum . s:hash(a:compiler)
+    return s:truncate(sign_id, sign_id_max_length)
+endfunction
+
+
+function! s:hash(input_string)
+    let chars = split(a:input_string, '\zs')
+    return join(map(chars, 'float2nr(fmod(char2nr(v:val), 10))'), '')
 endfunction
 
 let &cpoptions = s:save_cpo
