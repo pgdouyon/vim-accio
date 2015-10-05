@@ -53,7 +53,6 @@ function! accio#accio_vim(args)
         let qflist = getqflist()
         let compiler_target = s:get_compiler_target(&l:makeprg, compiler_args)
         let compiler_task = s:new_compiler_task(compiler, compiler_target, &l:makeprg, &l:errorformat)
-        call s:clear_display(compiler_task)
         let compiler_task.qflist = qflist
         call s:update_display(compiler_task)
         call s:save_compiler_task(compiler_task)
@@ -92,16 +91,22 @@ function! accio#statusline()
 endfunction
 
 
-function! accio#echo_message()
+function! accio#echo_message(...)
+    let has_restriction = a:0
+    let compiler_restriction = a:0 ? a:1 : ""
     let buffer_line_errors = get(s:accio_line_errors, bufnr("%"), {})
     let line_error = get(buffer_line_errors, line("."), {})
     let message = get(line_error, "text", "")
-    if !empty(message)
-        echohl WarningMsg | echo message | echohl None
-        let s:accio_echoed_message = 1
-    elseif s:accio_echoed_message
-        echo
-        let s:accio_echoed_message = 0
+    let compiler = get(line_error, "accio_compiler", "")
+    let meets_restriction = !has_restriction || (compiler ==# compiler_restriction)
+    if meets_restriction
+        if !empty(message)
+            echohl WarningMsg | echo message | echohl None
+            let s:accio_echoed_message = 1
+        elseif s:accio_echoed_message
+            echo
+            let s:accio_echoed_message = 0
+        endif
     endif
 endfunction
 
@@ -119,7 +124,6 @@ endfunction
 
 function! s:job_handler(id, data, event)
     let compiler_task = self.compiler_task
-    if !compiler_task.is_display_cleared | call s:clear_display(compiler_task) | endif
     if a:event ==# "exit"
         let s:jobs_in_progress -= 1
         if !compiler_task.is_output_synced
@@ -128,6 +132,7 @@ function! s:job_handler(id, data, event)
             call s:update_quickfix_list(compiler_task)
             call s:update_display(compiler_task)
         endif
+        call s:clear_stale_compiler_errors(compiler_task)
         call s:cleanup(compiler_task)
         call s:accio_process_queue()
     else
@@ -245,26 +250,26 @@ endfunction
 " Compiler Task API
 " ======================================================================
 function! s:new_compiler_task(compiler, compiler_target, compiler_command, errorformat)
-    let template = {"qflist": []}
-    let compiler_task = s:get_compiler_task(a:compiler, a:compiler_target, template)
+    let old_qflist = get(s:get_compiler_task(a:compiler, a:compiler_target), "qflist", [])
+    let compiler_task = {}
     let compiler_task.compiler = a:compiler
     let compiler_task.target = a:compiler_target
     let compiler_task.command = a:compiler_command
     let compiler_task.errorformat = a:errorformat
+    let compiler_task.old_qflist = old_qflist
+    let compiler_task.qflist = []
     let compiler_task.output = []
     let compiler_task.is_output_synced = 1
-    let compiler_task.is_display_cleared = 0
     let compiler_task.last_update_time = s:get_current_time() - (g:accio_update_interval / 2)
     return compiler_task
 endfunction
 
 
-function! s:get_compiler_task(compiler, compiler_target, ...)
+function! s:get_compiler_task(compiler, compiler_target)
     if !has_key(s:compiler_tasks, a:compiler_target)
         let s:compiler_tasks[a:compiler_target] = {}
     endif
-    let default = (a:0 ? a:1 : {})
-    return get(s:compiler_tasks[a:compiler_target], a:compiler, default)
+    return get(s:compiler_tasks[a:compiler_target], a:compiler, {})
 endfunction
 
 
@@ -292,34 +297,12 @@ endfunction
 " ======================================================================
 " Display Functions
 " ======================================================================
-function! s:clear_display(compiler_task)
-    call s:clear_compiler_errors(a:compiler_task)
-    let a:compiler_task.qflist = []
-    let a:compiler_task.is_display_cleared = 1
-endfunction
-
-
-function! s:clear_compiler_errors(compiler_task)
-    for error in a:compiler_task.qflist
-        let bufnr = error.bufnr
-        let lnum = error.lnum
-        if bufnr > 0 && lnum > 0
-            let compiler_to_remove = a:compiler_task.compiler
-            let errors_by_line = s:get_errors_by_line(bufnr, lnum)
-            call s:remove_errors_by_compiler(errors_by_line, compiler_to_remove)
-            call s:set_errors_by_line(bufnr, lnum, errors_by_line)
-            call s:update_line_error(bufnr, lnum, compiler_to_remove)
-        endif
-    endfor
-endfunction
-
-
 function! s:update_display(compiler_task)
     let compiler_errors = copy(a:compiler_task.qflist)
     call s:set_accio_compiler(compiler_errors, a:compiler_task.compiler)
     call s:format_error_messages(compiler_errors, a:compiler_task.compiler)
+    call s:clear_compiler_errors(compiler_errors, a:compiler_task.compiler)
     call s:update_line_errors(compiler_errors, a:compiler_task.compiler)
-    call accio#echo_message()
 endfunction
 
 
@@ -340,6 +323,20 @@ function! s:format_error_messages(errors, compiler)
 endfunction
 
 
+function! s:clear_compiler_errors(errors, compiler)
+    for error in a:errors
+        let bufnr = error.bufnr
+        let lnum = error.lnum
+        if bufnr > 0 && lnum > 0
+            let compiler_to_remove = a:compiler
+            let errors_by_line = s:get_errors_by_line(bufnr, lnum)
+            call s:remove_errors_by_compiler(errors_by_line, compiler_to_remove)
+            call s:set_errors_by_line(bufnr, lnum, errors_by_line)
+        endif
+    endfor
+endfunction
+
+
 function! s:update_line_errors(errors, compiler)
     for error in a:errors
         let bufnr = error.bufnr
@@ -356,6 +353,26 @@ function! s:update_line_errors(errors, compiler)
             endif
         endif
     endfor
+endfunction
+
+
+function! s:clear_stale_compiler_errors(compiler_task)
+    let [old_qflist, qflist] = [a:compiler_task.old_qflist, a:compiler_task.qflist]
+    let stale_errors = filter(old_qflist, 'index(qflist, v:val) == -1')
+    call s:set_accio_compiler(stale_errors, a:compiler_task.compiler)
+    call s:format_error_messages(stale_errors, a:compiler_task.compiler)
+    for error in stale_errors
+        let bufnr = error.bufnr
+        let lnum = error.lnum
+        if bufnr > 0 && lnum > 0
+            call s:remove_from_errors_by_line(error)
+            if s:get_line_error(bufnr, lnum) ==# error
+                call s:remove_line_error(bufnr, lnum)
+            endif
+        endif
+    endfor
+    silent! unlet a:compiler_task.old_qflist
+    call accio#echo_message(a:compiler_task.compiler)
 endfunction
 
 
@@ -391,22 +408,24 @@ function! s:set_line_error(bufnr, lnum, line_error)
 endfunction
 
 
-function! s:clear_line_error(bufnr, lnum)
+function! s:remove_line_error(bufnr, lnum)
+    let errors_by_line = s:get_errors_by_line(a:bufnr, a:lnum)
+    call s:unplace_sign(s:get_line_error(a:bufnr, a:lnum))
     silent! unlet s:accio_line_errors[a:bufnr][a:lnum]
+    if !empty(errors_by_line)
+        let best_error = s:get_best_error(errors_by_line)
+        call s:set_line_error(a:bufnr, a:lnum, best_error)
+        call s:place_sign(best_error)
+    endif
 endfunction
 
 
-function! s:update_line_error(bufnr, lnum, compiler_to_remove)
-    let line_error = s:get_line_error(a:bufnr, a:lnum)
-    let errors_by_line = s:get_errors_by_line(a:bufnr, a:lnum)
-    if get(line_error, "accio_compiler", "") ==# a:compiler_to_remove
-        call s:unplace_sign(line_error)
-        call s:clear_line_error(a:bufnr, a:lnum)
-        if !empty(errors_by_line)
-            let best_error = s:get_best_error(errors_by_line)
-            call s:set_line_error(a:bufnr, a:lnum, best_error)
-            call s:place_sign(best_error)
-        endif
+function! s:remove_from_errors_by_line(error)
+    let errors_by_line = s:get_errors_by_line(a:error.bufnr, a:error.lnum)
+    let errors_by_line_index = index(errors_by_line, a:error)
+    if errors_by_line_index >= 0
+        call remove(errors_by_line, errors_by_line_index)
+        call s:set_errors_by_line(a:error.bufnr, a:error.lnum, errors_by_line)
     endif
 endfunction
 
