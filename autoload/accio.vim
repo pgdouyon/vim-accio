@@ -300,7 +300,7 @@ endfunction
 " Display Functions
 " ======================================================================
 function! s:update_display(compiler_task)
-    let compiler_errors = copy(a:compiler_task.qflist)
+    let compiler_errors = deepcopy(a:compiler_task.qflist)
     call s:set_accio_compiler(compiler_errors, a:compiler_task.compiler)
     call s:format_error_messages(compiler_errors, a:compiler_task.compiler)
     call s:clear_compiler_errors(compiler_errors, a:compiler_task.compiler)
