@@ -55,6 +55,7 @@ function! accio#accio_vim(args)
         let compiler_task = s:new_compiler_task(compiler, compiler_target, &l:makeprg, &l:errorformat)
         let compiler_task.qflist = qflist
         call s:update_display(compiler_task)
+        call s:clear_stale_compiler_errors(compiler_task)
         call s:save_compiler_task(compiler_task)
         call extend(s:accio_quickfix_list, qflist)
     endfor
