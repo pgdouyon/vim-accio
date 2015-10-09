@@ -320,7 +320,7 @@ function! s:format_error_messages(errors, compiler)
         let message = get(error, "text", "No error message available...")
         let message = substitute(message, '\n', ' ', 'g')
         let message = substitute(message, '\t', tab_spaces, 'g')
-        let error.text = s:truncate(message_prefix . message, &columns)
+        let error.text = s:truncate(message_prefix . message, &columns - 1)
     endfor
 endfunction
 
