@@ -55,6 +55,7 @@ function! accio#accio_vim(args)
         let compiler_task.qflist = qflist
         call s:update_display(compiler_task)
         call s:clear_stale_compiler_errors(compiler_task)
+        call s:refresh_all_signs(compiler_task)
         call s:save_compiler_task(compiler_task)
         call extend(s:accio_quickfix_list, qflist)
         silent! colder
@@ -135,6 +136,7 @@ function! s:job_handler(id, data, event)
             call s:update_display(compiler_task)
         endif
         call s:clear_stale_compiler_errors(compiler_task)
+        call s:refresh_all_signs(compiler_task)
         call s:cleanup(compiler_task)
         call s:accio_process_queue()
     else
@@ -353,6 +355,19 @@ function! s:update_line_errors(errors, compiler)
                 call s:unplace_sign(current_line_error)
                 call s:place_sign(best_error)
             endif
+        endif
+    endfor
+endfunction
+
+
+function! s:refresh_all_signs(compiler_task)
+    for error in a:compiler_task.qflist
+        let bufnr = error.bufnr
+        let lnum = error.lnum
+        if bufnr > 0 && lnum > 0
+            let current_line_error = s:get_line_error(bufnr, lnum)
+            call s:unplace_sign(current_line_error)
+            call s:place_sign(current_line_error)
         endif
     endfor
 endfunction
