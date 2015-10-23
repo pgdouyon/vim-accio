@@ -104,6 +104,7 @@ function! accio#echo_message(...)
     let meets_restriction = !has_restriction || (compiler ==# compiler_restriction)
     if meets_restriction
         if !empty(message)
+            redraw
             echohl WarningMsg | echo message | echohl None
             let s:accio_echoed_message = 1
         elseif s:accio_echoed_message
