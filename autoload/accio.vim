@@ -48,7 +48,8 @@ function! accio#accio_vim(args)
     let save_errorformat = &l:errorformat
     for arg in s:parse_accio_args(a:args)
         let [compiler, compiler_args] = matchlist(arg, '^\(\S*\)\s*\(.*\)')[1:2]
-        execute printf("compiler %s | silent noautocmd make! %s | redraw!", compiler, compiler_args)
+        execute printf("compiler %s | silent noautocmd make! %s", compiler, compiler_args)
+        redraw!
         let qflist = getqflist()
         let compiler_target = s:get_compiler_target(&l:makeprg, compiler_args)
         let compiler_task = s:new_compiler_task(compiler, compiler_target, &l:makeprg, &l:errorformat)
