@@ -87,11 +87,12 @@ function! accio#next_warning(forward, visual_mode) abort
 endfunction
 
 
-function! accio#statusline()
+function! accio#statusline(...)
+    let format = get(a:000, 0, "Errors: %d")
+    let no_errors = get(a:000, 1, printf(format, 0))
     let bufnr = bufnr("%")
-    let statusline = "Errors: "
     let error_count = len(get(s:accio_line_errors, bufnr, {}))
-    return statusline . error_count
+    return error_count ? printf(format, error_count) : no_errors
 endfunction
 
 

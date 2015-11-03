@@ -115,7 +115,7 @@ Mappings                                                      *accio-mappings*
 ==============================================================================
 Statusline                                                  *accio-statusline*
 
-accio#statusline()                                        *accio#statusline()*
+accio#statusline([{fmt}[, {noerr}]])                      *accio#statusline()*
                         Accio provides a statusline function that will report
                         the number of errors in the current buffer.
 
@@ -123,6 +123,15 @@ accio#statusline()                                        *accio#statusline()*
                             set statusline+=%#WarningMsg#
                             set statusline+=%{accio#statusline()}
                             set statusline+=%*
+<
+                        When {fmt} is supplied as a string containing a "%d"
+                        placeholder, it is used as the format string for
+                        displaying the number of errors: >
+                            accio#statusline("Errors: %d")
+<
+                        The optional argument {noerr} specifies the output
+                        when there are no errors (otherwise, {fmt} is used): >
+                            accio#statusline("Errors: %d", "No errors")
 <
 
 ==============================================================================
