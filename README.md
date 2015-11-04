@@ -103,12 +103,6 @@ through Accio with the command `:Accio IntelliJ %`.
 - `g:accio_update_interval`
     - Length of the interval, in milliseconds, between updates to the quickfix
       list and displayed signs
-- `g:accio_error_highlight`
-    - Sets the highlight group used for displaying Error signs, default is
-      "Error".
-- `g:accio_warning_highlight`
-    - Sets the highlight group used for displaying Error signs, default is
-      "Search".
 
 
 ### Differences from [Neomake][]

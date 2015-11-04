@@ -8,6 +8,7 @@ Contents                                                      *accio-contents*
     3. Commands.........................................|accio-commands|
     4. Mappings.........................................|accio-mappings|
     5. Statusline.......................................|accio-statusline|
+    6. Signs............................................|accio-signs|
 
 ==============================================================================
 Intro                                                            *accio-intro*
@@ -61,20 +62,6 @@ g:accio_update_interval                              *g:accio_update_interval*
                             let g:accio_update_interval = 1000
 <
                         The default value is 500.
-
-g:accio_error_highlight                              *g:accio_error_highlight*
-                        Set this variable to change the highlight group used
-                        for displaying Error signs. >
-                            let g:accio_error_highlight = "WarningMsg"
-<
-                        The default value is "Error"
-
-g:accio_warning_highlight                          *g:accio_warning_highlight*
-                        Set this variable to change the highlight group used
-                        for displaying Warning signs. >
-                            let g:accio_error_highlight = "Todo"
-<
-                        The default value is "Search"
 
 
 ==============================================================================
@@ -133,6 +120,21 @@ accio#statusline([{fmt}[, {noerr}]])                      *accio#statusline()*
                         when there are no errors (otherwise, {fmt} is used): >
                             accio#statusline("Errors: %d", "No errors")
 <
+
+==============================================================================
+Signs                                                            *accio-signs*
+
+AccioErrorSign                                             *hl-AccioErrorSign*
+                        The highlight group used for displaying Error signs. >
+                            highlight! link AccioErrorSign ErrorMsg
+<
+                        It is linked to the "ErrorMsg" group by default.
+
+AccioWarningSign                                         *hl-AccioWarningSign*
+                        The highlight group used for displaying Warning signs. >
+                            highlight! link AccioWarningSign WarningMsg
+<
+                        It is linked to the "WarningMsg" group by default.
 
 ==============================================================================
 vim:tw=78:ts=8:ft=help:norl:
