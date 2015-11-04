@@ -16,11 +16,12 @@ set cpoptions&vim
 let g:accio_auto_copen = get(g:, "accio_auto_copen", 0)
 let g:accio_create_empty_quickfix = get(g:, "accio_create_empty_quickfix", 1)
 let g:accio_update_interval = get(g:, "accio_update_interval", 500)
-let g:accio_error_highlight = get(g:, "accio_error_highlight", "Error")
-let g:accio_warning_highlight = get(g:, "accio_warning_highlight", "Search")
 
-execute "sign define AccioError text=>> texthl=".g:accio_error_highlight
-execute "sign define AccioWarning text=>> texthl=".g:accio_warning_highlight
+sign define AccioError text=>> texthl=AccioErrorSign
+sign define AccioWarning text=>> texthl=AccioWarningSign
+
+highlight default link AccioErrorSign ErrorMsg
+highlight default link AccioWarningSign WarningMsg
 
 nnoremap <silent> <Plug>AccioPrevWarning :<C-U>call accio#next_warning(0, 0)<CR>
 xnoremap <silent> <Plug>AccioPrevWarning :<C-U>call accio#next_warning(0, 1)<CR>

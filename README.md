@@ -24,7 +24,7 @@ To run a single compiler plugin just pass its name to Accio:
 
 - i.e. `:Accio javac`
 
-To run multiple compiler plugins at once and aggregrate their results into one
+To run multiple compiler plugins at once and aggregate their results into one
 quickfix list, pass a list of compiler names to Accio:
 
 - i.e. `:Accio ["javac", "checkstyle"]`
@@ -103,12 +103,6 @@ through Accio with the command `:Accio IntelliJ %`.
 - `g:accio_update_interval`
     - Length of the interval, in milliseconds, between updates to the quickfix
       list and displayed signs
-- `g:accio_error_highlight`
-    - Sets the highlight group used for displaying Error signs, default is
-      "Error".
-- `g:accio_warning_highlight`
-    - Sets the highlight group used for displaying Error signs, default is
-      "Search".
 
 
 ### Differences from [Neomake][]
