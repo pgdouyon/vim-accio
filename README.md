@@ -24,7 +24,7 @@ To run a single compiler plugin just pass its name to Accio:
 
 - i.e. `:Accio javac`
 
-To run multiple compiler plugins at once and aggregrate their results into one
+To run multiple compiler plugins at once and aggregate their results into one
 quickfix list, pass a list of compiler names to Accio:
 
 - i.e. `:Accio ["javac", "checkstyle"]`
