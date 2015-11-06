@@ -21,51 +21,19 @@ let s:errors_by_line = {}
 " ======================================================================
 " Public API
 " ======================================================================
-function! accio#accio(args)
-    let save_makeprg = &l:makeprg
-    let save_errorformat = &l:errorformat
-    let [args; rest] = s:parse_accio_args(a:args)
-    let [compiler, compiler_args] = matchlist(args, '^\(\S*\)\s*\(.*\)')[1:2]
-    let [compiler_command, compiler_target] = s:parse_makeprg(compiler, compiler_args)
-    if s:jobs_in_progress
-        call add(s:accio_queue, [a:args, bufnr("%")])
-    else
-        let s:quickfix_cleared = 0
-        let s:accio_compiler_task_ids = []
-        let compiler_task = s:new_compiler_task(compiler, compiler_target, compiler_command, &l:errorformat)
-        call s:start_job(compiler_task)
-        call s:process_arglist(rest)
-        call s:save_compiler_task(compiler_task)
-        let s:jobs_in_progress = 1 + len(rest)
+function! accio#accio(tasks) abort
+    let tasks = type(args) == type("") ? [a:tasks] : a:tasks
+
+    if empty(tasks)
+        echohl ErrorMsg | echo "Accio: no task specified" | echohl None
+        return
     endif
-    let &l:makeprg = save_makeprg
-    let &l:errorformat = save_errorformat
-endfunction
 
-
-function! accio#accio_vim(args)
-    let save_makeprg = &l:makeprg
-    let save_errorformat = &l:errorformat
-    for arg in s:parse_accio_args(a:args)
-        let [compiler, compiler_args] = matchlist(arg, '^\(\S*\)\s*\(.*\)')[1:2]
-        execute printf("compiler %s | silent noautocmd make! %s", compiler, compiler_args)
-        redraw!
-        let qflist = getqflist()
-        let compiler_target = s:get_compiler_target(&l:makeprg, compiler_args)
-        let compiler_task = s:new_compiler_task(compiler, compiler_target, &l:makeprg, &l:errorformat)
-        let compiler_task.qflist = qflist
-        call s:update_display(compiler_task)
-        call s:clear_stale_compiler_errors(compiler_task)
-        call s:refresh_all_signs(compiler_task)
-        call s:save_compiler_task(compiler_task)
-        call extend(s:accio_quickfix_list, qflist)
-        silent! colder
-    endfor
-    let &l:makeprg = save_makeprg
-    let &l:errorformat = save_errorformat
-    let force_update = !empty(s:accio_quickfix_list) || g:accio_create_empty_quickfix
-    call s:set_quickfix_list(s:accio_quickfix_list, force_update)
-    call s:cwindow()
+    if exists("*jobstart")
+        call s:accio_do_async(tasks)
+    else
+        call s:accio_do_sync(tasks)
+    endif
 endfunction
 
 
@@ -165,15 +133,14 @@ let s:job_control_callbacks = {
 " ======================================================================
 " Parsing Functions
 " ======================================================================
-function! s:parse_accio_args(args)
-    if a:args[0] ==# "[" && a:args[-1:] ==# "]"
-        let args = eval(a:args)[0]
-        let rest = eval(a:args)[1:]
+function! accio#parse_args(args)
+    if empty(a:args)
+        return []
+    elseif a:args[0] ==# "[" && a:args[-1:] ==# "]"
+        return eval(a:args)
     else
-        let args = a:args
-        let rest = []
+        return [a:args]
     endif
-    return [args] + rest
 endfunction
 
 
@@ -481,9 +448,56 @@ endfunction
 " ======================================================================
 " Process Queue/Arglist
 " ======================================================================
+function! s:accio_do_async(tasks)
+    let save_makeprg = &l:makeprg
+    let save_errorformat = &l:errorformat
+    let [compiler, compiler_args] = matchlist(a:tasks[0], '^\(\S*\)\s*\(.*\)')[1:2]
+    let [compiler_command, compiler_target] = s:parse_makeprg(compiler, compiler_args)
+    if s:jobs_in_progress
+        call add(s:accio_queue, [a:tasks, bufnr("%")])
+    else
+        let s:quickfix_cleared = 0
+        let s:accio_compiler_task_ids = []
+        let compiler_task = s:new_compiler_task(compiler, compiler_target, compiler_command, &l:errorformat)
+        call s:start_job(compiler_task)
+        call s:process_arglist(a:tasks[1:])
+        call s:save_compiler_task(compiler_task)
+        let s:jobs_in_progress = 1 + len(a:tasks[1:])
+    endif
+    let &l:makeprg = save_makeprg
+    let &l:errorformat = save_errorformat
+endfunction
+
+
+function! s:accio_do_sync(tasks)
+    let save_makeprg = &l:makeprg
+    let save_errorformat = &l:errorformat
+    for task in a:tasks
+        let [compiler, compiler_args] = matchlist(task, '^\(\S*\)\s*\(.*\)')[1:2]
+        execute printf("compiler %s | silent noautocmd make! %s", compiler, compiler_args)
+        redraw!
+        let qflist = getqflist()
+        let compiler_target = s:get_compiler_target(&l:makeprg, compiler_args)
+        let compiler_task = s:new_compiler_task(compiler, compiler_target, &l:makeprg, &l:errorformat)
+        let compiler_task.qflist = qflist
+        call s:update_display(compiler_task)
+        call s:clear_stale_compiler_errors(compiler_task)
+        call s:refresh_all_signs(compiler_task)
+        call s:save_compiler_task(compiler_task)
+        call extend(s:accio_quickfix_list, qflist)
+        silent! colder
+    endfor
+    let &l:makeprg = save_makeprg
+    let &l:errorformat = save_errorformat
+    let force_update = !empty(s:accio_quickfix_list) || g:accio_create_empty_quickfix
+    call s:set_quickfix_list(s:accio_quickfix_list, force_update)
+    call s:cwindow()
+endfunction
+
+
 function! s:process_arglist(rest)
-    for args in a:rest
-        call accio#accio(args)
+    for task in a:rest
+        call s:accio_do_async([task])
         let s:jobs_in_progress = 0
     endfor
 endfunction
@@ -493,9 +507,9 @@ function! s:accio_process_queue()
     if !empty(s:accio_queue)
         call uniq(sort(s:accio_queue))
         let save_buffer = bufnr("%")
-        let [accio_args, target_buffer] = remove(s:accio_queue, 0)
+        let [tasks, target_buffer] = remove(s:accio_queue, 0)
         execute "silent! buffer " . target_buffer
-        call accio#accio(accio_args)
+        call s:accio_do_async(tasks)
         execute "buffer " save_buffer
     endif
 endfunction

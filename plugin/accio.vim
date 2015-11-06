@@ -43,11 +43,7 @@ augroup accio
     autocmd CursorMoved * call accio#echo_message()
 augroup END
 
-if has("nvim")
-    command! -nargs=+ -complete=compiler Accio call accio#accio(<q-args>)
-else
-    command! -nargs=+ -complete=compiler Accio call accio#accio_vim(<q-args>)
-endif
+command! -bar -nargs=+ -complete=compiler Accio call accio#accio(accio#parse_args(<q-args>))
 
 let &cpoptions = s:save_cpo
 unlet s:save_cpo
