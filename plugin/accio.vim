@@ -43,7 +43,12 @@ augroup accio
     autocmd CursorMoved * call accio#echo_message()
 augroup END
 
-command! -bar -nargs=+ -complete=compiler Accio call accio#accio(accio#parse_args(<q-args>))
+command! -bang -bar -nargs=? -complete=compiler Accio
+            \ if empty(<q-args>) && <bang>0 |
+            \     call accio#obliviate() |
+            \ else |
+            \     call accio#accio(accio#parse_args(<q-args>), <bang>0) |
+            \ endif
 
 let &cpoptions = s:save_cpo
 unlet s:save_cpo

@@ -21,8 +21,21 @@ let s:errors_by_line = {}
 " ======================================================================
 " Public API
 " ======================================================================
-function! accio#accio(tasks) abort
-    let tasks = type(args) == type("") ? [a:tasks] : a:tasks
+function! accio#accio(...) abort
+    let args = get(a:000, 0, [])
+    let focus = get(a:000, 1, 0)
+    let tasks = type(args) == type("") ? [args] : args
+
+    if empty(tasks)
+        if exists("g:accio_focus") && !empty(g:accio_focus)
+            let tasks = g:accio_focus
+        else
+            let inferred = get(b:, "accio", get(b:, "current_compiler", []))
+            let tasks = type(inferred) == type("") ? [inferred] : inferred
+        endif
+    elseif focus
+        let g:accio_focus = tasks
+    endif
 
     if empty(tasks)
         echohl ErrorMsg | echo "Accio: no task specified" | echohl None
@@ -34,6 +47,11 @@ function! accio#accio(tasks) abort
     else
         call s:accio_do_sync(tasks)
     endif
+endfunction
+
+
+function! accio#obliviate() abort
+    unlet! g:accio_focus
 endfunction
 
 
