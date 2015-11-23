@@ -67,7 +67,7 @@ g:accio_update_interval                              *g:accio_update_interval*
 ==============================================================================
 Commands                                                      *accio-commands*
 
-:Accio {arguments}                                                    *:Accio*
+:Accio {tasks}                                                        *:Accio*
                         Invokes the 'makeprg' specified by the compiler
                         plugins passed to the command and displays any
                         errors/warnings reported.  If |g:accio_auto_copen| is
@@ -88,6 +88,18 @@ Commands                                                      *accio-commands*
                         a list, otherwise Vim will attempt to resolve them as
                         variable names and throw an error
 
+:Accio                                                               *b:accio*
+                        Invokes |:Accio| with the arguments found in b:accio.
+                        If not set, falls back to b:current_compiler.
+
+:Accio! {tasks}
+                        Focus and execute {tasks}.  Same as |:Accio| but
+                        remembers the arguments such that they are reused in
+                        subsequent invocations (globally) without having to
+                        specify the {tasks} again.
+
+:Accio!
+                        Forget the currently focused task(s).
 
 ==============================================================================
 Mappings                                                      *accio-mappings*
