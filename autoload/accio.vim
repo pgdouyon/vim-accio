@@ -491,13 +491,32 @@ endfunction
 
 function! s:accio_process_queue()
     if !empty(s:accio_queue)
-        call uniq(sort(s:accio_queue))
-        let save_buffer = bufnr("%")
-        let [accio_args, target_buffer] = remove(s:accio_queue, 0)
-        execute "silent! buffer " . target_buffer
-        call accio#accio(accio_args)
-        execute "buffer " save_buffer
+        if (getbufvar("%", "&bufhidden", "") ==# "wipe")
+            " if we try to switch away from the current buffer it will be wiped
+            " and we won't be able to return.  delay the queue processing until
+            " we're in a buffer that isn't wiped when hidden
+            augroup accio_delay_queue
+                autocmd! BufEnter * call <SID>accio_process_queue_delayed()
+            augroup END
+        else
+            call uniq(sort(s:accio_queue))
+            let save_buffer = bufnr("%")
+            let [accio_args, target_buffer] = remove(s:accio_queue, 0)
+            execute "silent! buffer " . target_buffer
+
+            if bufnr("%") != save_buffer
+                call accio#accio(accio_args)
+                execute "buffer " save_buffer
+            endif
+        endif
     endif
+endfunction
+
+
+function! s:accio_process_queue_delayed()
+    autocmd! accio_delay_queue
+    augroup! accio_delay_queue
+    call s:accio_process_queue()
 endfunction
 
 
