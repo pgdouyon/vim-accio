@@ -502,11 +502,11 @@ function! s:accio_process_queue()
             call uniq(sort(s:accio_queue))
             let save_buffer = bufnr("%")
             let [accio_args, target_buffer] = remove(s:accio_queue, 0)
-            execute "silent! buffer " . target_buffer
+            execute "silent! noautocmd keepalt keepjumps buffer " . target_buffer
 
             if bufnr("%") != save_buffer
                 call accio#accio(accio_args)
-                execute "buffer " save_buffer
+                execute "noautocmd keepalt keepjumps buffer " save_buffer
             endif
         endif
     endif
