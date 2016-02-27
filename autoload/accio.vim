@@ -28,7 +28,7 @@ function! accio#accio(args)
     let [compiler, compiler_args] = matchlist(args, '^\(\S*\)\s*\(.*\)')[1:2]
     let [compiler_command, compiler_target] = s:parse_makeprg(compiler, compiler_args)
     if s:jobs_in_progress
-        call add(s:accio_queue, [a:args, bufnr("%")])
+        call s:queue(a:args)
     else
         let s:quickfix_cleared = 0
         let s:accio_compiler_task_ids = []
@@ -489,6 +489,11 @@ function! s:process_arglist(rest)
 endfunction
 
 
+function! s:queue(args)
+    call add(s:accio_queue, [a:args, bufnr("%")])
+endfunction
+
+
 function! s:accio_process_queue()
     if !empty(s:accio_queue)
         if (getbufvar("%", "&bufhidden", "") ==# "wipe")
@@ -500,14 +505,15 @@ function! s:accio_process_queue()
             augroup END
         else
             call uniq(sort(s:accio_queue))
-            let save_buffer = bufnr("%")
             let [accio_args, target_buffer] = remove(s:accio_queue, 0)
-            execute "silent! noautocmd keepalt keepjumps buffer " . target_buffer
-
-            if bufnr("%") != save_buffer
+            let save_buffer = bufnr("%")
+            try
+                execute "silent noautocmd keepalt keepjumps buffer " . target_buffer
                 call accio#accio(accio_args)
-                execute "noautocmd keepalt keepjumps buffer " save_buffer
-            endif
+                execute "silent noautocmd keepalt keepjumps buffer " save_buffer
+            catch /^.*/
+                " do nothing
+            endtry
         endif
     endif
 endfunction
