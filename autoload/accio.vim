@@ -508,24 +508,56 @@ function! s:accio_process_queue()
     let cutoff_time = s:get_current_time() - s:MAX_TIME_IN_QUEUE
     call filter(s:accio_queue, 'v:val.timestamp > cutoff_time')
     if !empty(s:accio_queue)
-        if (getbufvar("%", "&bufhidden", "") ==# "wipe")
-            " if we try to switch away from the current buffer it will be wiped
-            " and we won't be able to return.  delay the queue processing until
-            " we're in a buffer that isn't wiped when hidden
-            augroup accio_delay_queue
-                autocmd! BufEnter * call <SID>accio_process_queue_delayed()
-            augroup END
-        else
+        let current_buffer_queue = filter(copy(s:accio_queue), 'v:val.bufnr == bufnr("%")')
+        if !empty(current_buffer_queue)
+            let queue_index = index(s:accio_queue, current_buffer_queue[0])
+            let queue_element = remove(s:accio_queue, queue_index)
+            call accio#accio(queue_element.args)
+        elseif s:can_abandon_buffer()
             let save_buffer = bufnr("%")
             let queue_element = remove(s:accio_queue, 0)
             try
-                execute "silent noautocmd keepalt keepjumps buffer " . queue_element.bufnr
+                call s:try_visit(queue_element.bufnr)
                 call accio#accio(queue_element.args)
-                execute "silent noautocmd keepalt keepjumps buffer " save_buffer
+                call s:try_visit(save_buffer)
             catch /^.*/
-                " do nothing
+                execute "silent! keepalt keepjumps buffer" save_buffer
             endtry
+        else
+            augroup accio_delay_queue
+                autocmd! BufEnter * call <SID>accio_process_queue_delayed()
+            augroup END
         endif
+    endif
+endfunction
+
+
+function! s:can_abandon_buffer()
+    " abandon any buffer if we can switch without losing changes or losing the buffer
+    return empty(&buftype) && (&bufhidden !=# "wipe") && (!&modified || s:bufhidden())
+endfunction
+
+
+function! s:bufhidden()
+    return (&bufhidden ==# "hide") || (empty(&bufhidden) && (&hidden || s:bufvisible()))
+endfunction
+
+
+function! s:bufvisible()
+    let bufnr = bufnr("%")
+    for tabnr in tabpagenr("$")
+        if index(tabpagebuflist(tabnr), bufnr) >= 0
+            return 1
+        endif
+    endfor
+    return 0
+endfunction
+
+
+function! s:try_visit(bufnr)
+    if a:bufnr != bufnr("%")
+        let noautocmd = bufloaded(a:bufnr) ? "noautocmd" : ""
+        execute "silent" noautocmd "keepalt keepjumps buffer" a:bufnr
     endif
 endfunction
 
