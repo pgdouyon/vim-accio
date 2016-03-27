@@ -8,6 +8,9 @@
 let s:save_cpo = &cpoptions
 set cpoptions&vim
 
+" maximum time, in milliseconds, a delayed Accio invocation will be kept in the queue
+let s:MAX_TIME_IN_QUEUE = 5 * 60 * 1000
+
 let s:jobs_in_progress = 0
 let s:accio_echoed_message = 0
 let s:accio_queue = []
@@ -490,11 +493,20 @@ endfunction
 
 
 function! s:queue(args)
-    call add(s:accio_queue, [a:args, bufnr("%")])
+    let bufnr = bufnr("%")
+    call filter(s:accio_queue, '!(v:val.args ==# a:args && v:val.bufnr == bufnr)')
+    call add(s:accio_queue, s:new_queue_element(a:args, bufnr))
+endfunction
+
+
+function! s:new_queue_element(args, bufnr)
+    return {'timestamp': s:get_current_time(), 'args': a:args, 'bufnr': a:bufnr}
 endfunction
 
 
 function! s:accio_process_queue()
+    let cutoff_time = s:get_current_time() - s:MAX_TIME_IN_QUEUE
+    call filter(s:accio_queue, 'v:val.timestamp > cutoff_time')
     if !empty(s:accio_queue)
         if (getbufvar("%", "&bufhidden", "") ==# "wipe")
             " if we try to switch away from the current buffer it will be wiped
@@ -504,12 +516,11 @@ function! s:accio_process_queue()
                 autocmd! BufEnter * call <SID>accio_process_queue_delayed()
             augroup END
         else
-            call uniq(sort(s:accio_queue))
-            let [accio_args, target_buffer] = remove(s:accio_queue, 0)
             let save_buffer = bufnr("%")
+            let queue_element = remove(s:accio_queue, 0)
             try
-                execute "silent noautocmd keepalt keepjumps buffer " . target_buffer
-                call accio#accio(accio_args)
+                execute "silent noautocmd keepalt keepjumps buffer " . queue_element.bufnr
+                call accio#accio(queue_element.args)
                 execute "silent noautocmd keepalt keepjumps buffer " save_buffer
             catch /^.*/
                 " do nothing
@@ -530,8 +541,7 @@ endfunction
 " Utils
 " ======================================================================
 function! s:get_current_time()
-    let time = map(split(reltimestr(reltime()), '\.'), 'str2nr(v:val)')
-    let [seconds, microseconds] = time
+    let [seconds, microseconds] = map(split(reltimestr(reltime()), '\.'), 'str2nr(v:val)')
     let milliseconds = (seconds * 1000) + (microseconds / 1000)
     return milliseconds
 endfunction
