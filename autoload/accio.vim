@@ -545,7 +545,7 @@ endfunction
 
 function! s:bufvisible()
     let bufnr = bufnr("%")
-    for tabnr in tabpagenr("$")
+    for tabnr in range(1, tabpagenr("$"))
         if index(tabpagebuflist(tabnr), bufnr) >= 0
             return 1
         endif
