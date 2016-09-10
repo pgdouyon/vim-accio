@@ -66,8 +66,7 @@ function! accio#accio_vim(args)
     endfor
     let &l:makeprg = save_makeprg
     let &l:errorformat = save_errorformat
-    let force_update = !empty(s:accio_quickfix_list) || g:accio_create_empty_quickfix
-    call s:set_quickfix_list(s:accio_quickfix_list, force_update)
+    call s:set_quickfix_list(s:accio_quickfix_list)
     call s:cwindow()
 endfunction
 
@@ -202,13 +201,15 @@ endfunction
 " ======================================================================
 " Quickfix List
 " ======================================================================
-function! s:set_quickfix_list(qflist, ...)
-    let force_update = a:0 ? a:1 : 1
-    if s:is_accio_quickfix_list() || force_update
-        let action = s:is_accio_quickfix_list() ? "r" : " "
-        let s:accio_quickfix_list = a:qflist
+function! s:set_quickfix_list(quickfix_list)
+    if s:is_accio_quickfix_list()
+        call setqflist(a:quickfix_list, 'r')
+        let s:accio_quickfix_list = getqflist()
         let s:quickfix_cleared = 1
-        call setqflist(s:accio_quickfix_list, action)
+    elseif !s:quickfix_cleared && (!empty(a:quickfix_list) || g:accio_create_empty_quickfix)
+        call setqflist(a:quickfix_list)
+        let s:accio_quickfix_list = getqflist()
+        let s:quickfix_cleared = 1
     endif
 endfunction
 
@@ -234,8 +235,7 @@ function! s:update_quickfix_list(compiler_task)
         let compiler_task = s:get_compiler_task(compiler, target)
         let quickfix_list += compiler_task.qflist
     endfor
-    let force_update = (s:quickfix_cleared || !empty(quickfix_list) || g:accio_create_empty_quickfix)
-    call s:set_quickfix_list(quickfix_list, force_update)
+    call s:set_quickfix_list(quickfix_list)
 endfunction
 
 
