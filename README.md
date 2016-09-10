@@ -2,18 +2,18 @@ Accio
 =====
 
 Accio asynchronously *summons* build/compiler/linter output to your screen by
-wrapping the `:compiler` and `:make` commands with [Neovim][]'s job control
-API and Vim 8's job API.  Output from these programs is displayed in the
-following ways:
+wrapping the `:compiler` and `:make` commands using both [Neovim][]'s and Vim
+8's job control API.  Output from these programs is displayed in the following
+ways:
 
 - Populating the quickfix list
 - Placing signs on the error lines
 - Echoing the error message when the cursor is on an error line.
 
-Note: Vim 8's asynchronous API appears to still be unstable at the time of this
-writing and causes occasional seg faults.  I've increased the update interval
-to try and account for it but use with caution and try not to issue too many
-Accio commands in a short span of time.
+Note: Vim 8's job API appears to still be unstable at the time of this writing
+and causes occasional seg faults.  I've increased the update interval to try
+and account for it but use with caution and try not to issue too many Accio
+commands in a short span of time.
 
 
 Usage
@@ -81,12 +81,12 @@ if exists(":CompilerSet") != 2		" older Vim always used :setlocal
 endif
 
 let $CLASSPATH=b:loaded_javac_classpath
-CompilerSet makeprg=javac
+CompilerSet makeprg=javac\ %
 CompilerSet errorformat=%E%f:%l:\ %m,%-Z%p^,%-C%.%#,%-G%.%#
 ```
 
 Save this script to `$HOME/.vim/compiler/IntelliJ.vim` and it can be run
-through Accio with the command `:Accio IntelliJ %`.
+through Accio with the command `:Accio IntelliJ`.
 
 
 #### Configuration and Features
@@ -101,41 +101,25 @@ through Accio with the command `:Accio IntelliJ %`.
 - `g:accio_auto_copen`
     - Set to 1 to automatically open the quickfix list when the Accio command
       is invoked, 0 otherwise.
-- `g:accio_create_empty_quickfix`
-    - Set to 0 to prevent Accio from creating new quickfix lists when there are
-      no errors to report (Accio reuses its own quickfix lists), 1 otherwise.
-- `g:accio_update_interval`
-    - Length of the interval, in milliseconds, between updates to the quickfix
-      list and displayed signs
 
 
 ### Differences from [Neomake][]
 
-Neomake is essentially a superset of Accio and there's really no reason to use
-Accio over Neomake unless you're a control freak like me with an irrational
-hatred of pre-configured makers.
-
-My plan for Accio is to be a lightweight alternative to Neomake that hopefully
-feels like it gives more control/flexibility over your compilers/linters.
+Accio is borne out of my irrational hatred of pre-configured makers and it is
+intended to be a lightweight alternative to Neomake.  My hope for Accio is to
+feel like it gives more control/flexibility over your compilers/linters.
 
 The other main difference between the two plugins is that Neomake uses both the
 quickfix list and location list depending on which version of the command you
 run.  Accio will only use the quickfix list for all possible invocations.
 
 - I've put a lot of thought into it and come to the conclusion that the
-transience of location lists are not a good fit for asynchronous
-operation or error reporting.
-- If anyone ever ends up actually using this plugin I would still entertain
-arguments in favor of the location list, just open up an issue about it.
-- For anyone worried about Accio trashing their quickfix list, Accio makes
-an effort to reuse the quickfix list wherever possible.
-
-**Note:** Neomake does support compiler plugins in addition to pre-configured
-makers, but you still have to run the `:compiler` command separately.  Accio
-saves a step by bundling the `:compiler` and `:make` commands into one.
-
-- If you want to use more than one compiler plugin, you can't get around
-    this by setting the compiler per filetype.
+  transience of location lists are not a good fit for asynchronous operation or
+  error reporting.
+- I would still entertain arguments in favor of the location list, just open up
+  an issue about it.
+- For anyone worried about Accio trashing their quickfix list, Accio makes an
+  effort to reuse the quickfix list wherever possible.
 
 
 Installation
@@ -143,10 +127,6 @@ Installation
 
 * [Pathogen][]
     * `cd ~/.vim/bundle && git clone https://github.com/pgdouyon/vim-accio.git`
-* [Vundle][]
-    * `Plugin 'pgdouyon/vim-accio'`
-* [NeoBundle][]
-    * `NeoBundle 'pgdouyon/vim-accio'`
 * [Vim-Plug][]
     * `Plug 'pgdouyon/vim-accio'`
 * Manual Install
@@ -157,12 +137,10 @@ Installation
 License
 -------
 
-Copyright (c) 2015 Pierre-Guy Douyon.  Distributed under the MIT License.
+Copyright (c) 2016 Pierre-Guy Douyon.  Distributed under the MIT License.
 
 
 [Neovim]: https://github.com/neovim/neovim
-[Neomake]: https://github.com/benekastah/neomake
+[Neomake]: https://github.com/neomake/neomake
 [Pathogen]: https://github.com/tpope/vim-pathogen
-[Vundle]: https://github.com/gmarik/Vundle.vim
-[NeoBundle]: https://github.com/Shougo/neobundle.vim
 [Vim-Plug]: https://github.com/junegunn/vim-plug
