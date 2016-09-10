@@ -219,7 +219,7 @@ function! s:parse_quickfix_errors(compiler_task)
     let save_errorformat = &g:errorformat
     let &g:errorformat = a:compiler_task.errorformat
     call setloclist(0, [], "r")
-    laddexpr a:compiler_task.output
+    noautocmd laddexpr a:compiler_task.output
     let a:compiler_task.qflist = getloclist(0)
     let a:compiler_task.is_output_synced = 1
     let &g:errorformat = save_errorformat
