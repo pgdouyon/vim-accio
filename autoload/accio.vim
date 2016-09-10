@@ -36,38 +36,13 @@ function! accio#accio(args)
         let s:quickfix_cleared = 0
         let s:accio_compiler_task_ids = []
         let compiler_task = s:new_compiler_task(compiler, compiler_target, compiler_command, &l:errorformat)
-        call accio#job#start(compiler_task, function('s:job_handler'))
+        call accio#job#start(compiler_task)
         call s:process_arglist(rest)
         call s:save_compiler_task(compiler_task)
         let s:jobs_in_progress = 1 + len(rest)
     endif
     let &l:makeprg = save_makeprg
     let &l:errorformat = save_errorformat
-endfunction
-
-
-function! accio#accio_vim(args)
-    let save_makeprg = &l:makeprg
-    let save_errorformat = &l:errorformat
-    for arg in s:parse_accio_args(a:args)
-        let [compiler, compiler_args] = matchlist(arg, '^\(\S*\)\s*\(.*\)')[1:2]
-        execute printf("compiler %s | silent noautocmd make! %s", compiler, compiler_args)
-        redraw!
-        let qflist = getqflist()
-        let compiler_target = s:get_compiler_target(&l:makeprg, compiler_args)
-        let compiler_task = s:new_compiler_task(compiler, compiler_target, &l:makeprg, &l:errorformat)
-        let compiler_task.qflist = qflist
-        call s:update_display(compiler_task)
-        call s:clear_stale_compiler_errors(compiler_task)
-        call s:refresh_all_signs(compiler_task)
-        call s:save_compiler_task(compiler_task)
-        call extend(s:accio_quickfix_list, qflist)
-        silent! colder
-    endfor
-    let &l:makeprg = save_makeprg
-    let &l:errorformat = save_errorformat
-    call s:set_quickfix_list(s:accio_quickfix_list)
-    call s:cwindow()
 endfunction
 
 
@@ -122,7 +97,7 @@ endfunction
 " ======================================================================
 " Job Control API
 " ======================================================================
-function! s:job_handler(id, data, event)
+function! accio#job_handler(id, data, event) dict
     let compiler_task = self.compiler_task
     if a:event ==# "exit"
         let s:jobs_in_progress -= 1
@@ -218,7 +193,9 @@ function! s:update_quickfix_list(compiler_task)
     call uniq(sort(add(s:accio_compiler_task_ids, compiler_task_id)))
     for [compiler, target] in s:accio_compiler_task_ids
         let compiler_task = s:get_compiler_task(compiler, target)
-        let quickfix_list += compiler_task.qflist
+        if has_key(compiler_task, 'qflist')
+            let quickfix_list += compiler_task.qflist
+        endif
     endfor
     call s:set_quickfix_list(quickfix_list)
 endfunction

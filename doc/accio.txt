@@ -46,10 +46,6 @@ g:accio_create_empty_quickfix                  *g:accio_create_empty_quickfix*
                         Set this variable to 0 to only create new quickfix
                         lists when Accio has errors to report.
 
-                        Note: This only applies to the Neovim version.  The
-                        Vim version of Accio ignores this option and always
-                        creates a new quickfix list.
-
 g:accio_update_interval                              *g:accio_update_interval*
                         This variable represents the interval, in
                         milliseconds, between updates to the quickfix list and

@@ -17,6 +17,12 @@ let g:accio_auto_copen = get(g:, "accio_auto_copen", 0)
 let g:accio_create_empty_quickfix = get(g:, "accio_create_empty_quickfix", 1)
 let g:accio_update_interval = get(g:, "accio_update_interval", 500)
 
+" Vim's async API is not stable and causes occasional seg faults
+" use a high update interval to try and reduce load
+if !has("nvim")
+    let g:accio_update_interval = 2500
+endif
+
 sign define AccioError text=>> texthl=AccioErrorSign
 sign define AccioWarning text=>> texthl=AccioWarningSign
 
@@ -43,11 +49,7 @@ augroup accio
     autocmd CursorMoved * call accio#echo_message()
 augroup END
 
-if has("nvim")
-    command! -nargs=+ -complete=compiler Accio call accio#accio(<q-args>)
-else
-    command! -nargs=+ -complete=compiler Accio call accio#accio_vim(<q-args>)
-endif
+command! -nargs=+ -complete=compiler Accio call accio#accio(<q-args>)
 
 let &cpoptions = s:save_cpo
 unlet s:save_cpo
