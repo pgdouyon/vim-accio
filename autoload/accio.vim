@@ -36,7 +36,7 @@ function! accio#accio(args)
         let s:quickfix_cleared = 0
         let s:accio_compiler_task_ids = []
         let compiler_task = s:new_compiler_task(compiler, compiler_target, compiler_command, &l:errorformat)
-        call s:start_job(compiler_task)
+        call accio#job#start(compiler_task, function('s:job_handler'))
         call s:process_arglist(rest)
         call s:save_compiler_task(compiler_task)
         let s:jobs_in_progress = 1 + len(rest)
@@ -122,14 +122,6 @@ endfunction
 " ======================================================================
 " Job Control API
 " ======================================================================
-function! s:start_job(compiler_task)
-    let job_args = [&shell, '-c', a:compiler_task.command]
-    let job_opts = {'compiler_task': a:compiler_task}
-    call extend(job_opts, s:job_control_callbacks)
-    call jobstart(job_args, job_opts)
-endfunction
-
-
 function! s:job_handler(id, data, event)
     let compiler_task = self.compiler_task
     if a:event ==# "exit"
@@ -155,13 +147,6 @@ function! s:job_handler(id, data, event)
     endif
     call s:cwindow()
 endfunction
-
-
-let s:job_control_callbacks = {
-    \ 'on_stdout': function('s:job_handler'),
-    \ 'on_stderr': function('s:job_handler'),
-    \ 'on_exit': function('s:job_handler'),
-    \ }
 
 
 " ======================================================================
