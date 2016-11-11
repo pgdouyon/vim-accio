@@ -102,6 +102,11 @@ function! accio#job_handler(id, data, event) dict
             call s:update_quickfix_list(compiler_task)
             call s:update_display(compiler_task)
         endif
+        if s:jobs_in_progress == 0 && s:force_new_quickfix
+            " all jobs have finished and we still haven't created a new quickfix list,
+            " there must have been no output from the job, try to create an empty one
+            call s:set_quickfix_list([])
+        endif
         call s:clear_stale_compiler_errors(compiler_task)
         call s:refresh_all_signs(compiler_task)
         call s:cleanup(compiler_task)
