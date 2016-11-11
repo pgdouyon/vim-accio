@@ -202,7 +202,28 @@ endfunction
 
 
 function! s:is_accio_quickfix_list()
-    return (getqflist() ==# s:accio_quickfix_list)
+    let current_quickfix_list = getqflist()
+    if len(current_quickfix_list) == len(s:accio_quickfix_list)
+        for index in range(len(current_quickfix_list))
+            let current_entry = current_quickfix_list[index]
+            let accio_entry = s:accio_quickfix_list[index]
+            if !s:quickfix_entry_equals(current_entry, accio_entry)
+                return v:false
+            endif
+        endfor
+        return v:true
+    endif
+    return v:false
+endfunction
+
+
+function! s:quickfix_entry_equals(entry1, entry2)
+    return a:entry1.bufnr == a:entry2.bufnr
+            \ && a:entry1.nr == a:entry2.nr
+            \ && a:entry1.valid == a:entry2.valid
+            \ && a:entry1.text ==# a:entry2.text
+            \ && a:entry1.type ==# a:entry2.type
+            \ && a:entry1.pattern ==# a:entry2.pattern
 endfunction
 
 
