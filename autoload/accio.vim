@@ -15,7 +15,6 @@ let s:jobs_in_progress = 0
 let s:accio_echoed_message = v:false
 let s:accio_queue = []
 let s:accio_quickfix_list = []
-let s:accio_compiler_task_ids = []
 let s:compiler_tasks = {}
 let s:accio_line_errors = {}
 let s:errors_by_line = {}
@@ -24,23 +23,19 @@ let s:errors_by_line = {}
 " ======================================================================
 " Public API
 " ======================================================================
-function! accio#accio(args)
+function! accio#accio(args, ...)
+    if s:jobs_in_progress
+        return s:queue(a:args)
+    endif
     let save_makeprg = &l:makeprg
     let save_errorformat = &l:errorformat
-    let [args; rest] = s:parse_accio_args(a:args)
-    let [compiler, compiler_args] = matchlist(args, '^\(\S*\)\s*\(.*\)')[1:2]
-    let [compiler_command, compiler_target] = s:parse_makeprg(compiler, compiler_args)
-    if s:jobs_in_progress
-        call s:queue(a:args)
-    else
-        let s:quickfix_cleared = v:false
-        let s:accio_compiler_task_ids = []
-        let compiler_task = s:new_compiler_task(compiler, compiler_target, compiler_command, &l:errorformat)
-        call accio#job#start(compiler_task)
-        call s:process_arglist(rest)
-        call s:save_compiler_task(compiler_task)
-        let s:jobs_in_progress = 1 + len(rest)
-    endif
+    let arglist = s:parse_accio_args(a:args)
+    let s:accio_compiler_task_ids = []
+    let s:jobs_in_progress = len(arglist)
+    let s:force_new_quickfix = a:0 ? a:1 : v:true
+    for arg in arglist
+        call s:initialize_compiler_task(arg)
+    endfor
     let &l:makeprg = save_makeprg
     let &l:errorformat = save_errorformat
 endfunction
@@ -165,11 +160,11 @@ function! s:set_quickfix_list(quickfix_list)
     if s:is_accio_quickfix_list()
         call setqflist(a:quickfix_list, 'r')
         let s:accio_quickfix_list = getqflist()
-        let s:quickfix_cleared = v:true
-    elseif !s:quickfix_cleared && (!empty(a:quickfix_list) || g:accio_create_empty_quickfix)
+        let s:force_new_quickfix = v:false
+    elseif s:force_new_quickfix && (!empty(a:quickfix_list) || g:accio_create_empty_quickfix)
         call setqflist(a:quickfix_list)
         let s:accio_quickfix_list = getqflist()
-        let s:quickfix_cleared = v:true
+        let s:force_new_quickfix = v:false
     endif
 endfunction
 
@@ -467,11 +462,12 @@ endfunction
 " ======================================================================
 " Process Queue/Arglist
 " ======================================================================
-function! s:process_arglist(rest)
-    for args in a:rest
-        call accio#accio(args)
-        let s:jobs_in_progress = 0
-    endfor
+function! s:initialize_compiler_task(args)
+    let [compiler, compiler_args] = matchlist(a:args, '^\(\S*\)\s*\(.*\)')[1:2]
+    let [compiler_command, compiler_target] = s:parse_makeprg(compiler, compiler_args)
+    let compiler_task = s:new_compiler_task(compiler, compiler_target, compiler_command, &l:errorformat)
+    call accio#job#start(compiler_task)
+    call s:save_compiler_task(compiler_task)
 endfunction
 
 
@@ -495,7 +491,7 @@ function! s:accio_process_queue()
         if !empty(current_buffer_queue)
             let queue_index = index(s:accio_queue, current_buffer_queue[0])
             let queue_element = remove(s:accio_queue, queue_index)
-            call accio#accio(queue_element.args)
+            call accio#accio(queue_element.args, v:false)
         else
             augroup accio_delay_queue
                 autocmd! BufEnter * call <SID>accio_process_queue_delayed()
