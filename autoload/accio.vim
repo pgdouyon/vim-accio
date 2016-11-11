@@ -231,7 +231,7 @@ function! s:cwindow()
     if g:accio_auto_copen && s:is_accio_quickfix_list()
         if empty(getqflist()) && s:jobs_in_progress == 0
             cclose
-        else
+        elseif !empty(getqflist())
             let height = min([len(getqflist()), 10])
             execute printf("copen %d | %d wincmd w", height, winnr())
         endif
