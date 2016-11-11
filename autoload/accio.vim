@@ -12,7 +12,7 @@ set cpoptions&vim
 let s:MAX_TIME_IN_QUEUE = 30 * 60 * 1000
 
 let s:jobs_in_progress = 0
-let s:accio_echoed_message = 0
+let s:accio_echoed_message = v:false
 let s:accio_queue = []
 let s:accio_quickfix_list = []
 let s:accio_compiler_task_ids = []
@@ -33,7 +33,7 @@ function! accio#accio(args)
     if s:jobs_in_progress
         call s:queue(a:args)
     else
-        let s:quickfix_cleared = 0
+        let s:quickfix_cleared = v:false
         let s:accio_compiler_task_ids = []
         let compiler_task = s:new_compiler_task(compiler, compiler_target, compiler_command, &l:errorformat)
         call accio#job#start(compiler_task)
@@ -85,10 +85,10 @@ function! accio#echo_message(...)
         if !empty(message)
             redraw
             echohl WarningMsg | echo message | echohl None
-            let s:accio_echoed_message = 1
+            let s:accio_echoed_message = v:true
         elseif s:accio_echoed_message
             echo
-            let s:accio_echoed_message = 0
+            let s:accio_echoed_message = v:false
         endif
     endif
 endfunction
@@ -165,11 +165,11 @@ function! s:set_quickfix_list(quickfix_list)
     if s:is_accio_quickfix_list()
         call setqflist(a:quickfix_list, 'r')
         let s:accio_quickfix_list = getqflist()
-        let s:quickfix_cleared = 1
+        let s:quickfix_cleared = v:true
     elseif !s:quickfix_cleared && (!empty(a:quickfix_list) || g:accio_create_empty_quickfix)
         call setqflist(a:quickfix_list)
         let s:accio_quickfix_list = getqflist()
-        let s:quickfix_cleared = 1
+        let s:quickfix_cleared = v:true
     endif
 endfunction
 
@@ -181,7 +181,7 @@ function! s:parse_quickfix_errors(compiler_task)
     call setloclist(0, [], "r")
     noautocmd laddexpr a:compiler_task.output
     let a:compiler_task.qflist = getloclist(0)
-    let a:compiler_task.is_output_synced = 1
+    let a:compiler_task.is_output_synced = v:true
     let &g:errorformat = save_errorformat
     call setloclist(0, save_loclist, "r")
 endfunction
@@ -231,7 +231,7 @@ function! s:new_compiler_task(compiler, compiler_target, compiler_command, error
     let compiler_task.old_qflist = old_qflist
     let compiler_task.qflist = []
     let compiler_task.output = []
-    let compiler_task.is_output_synced = 1
+    let compiler_task.is_output_synced = v:true
     let compiler_task.last_update_time = s:get_current_time() - (g:accio_update_interval / 2)
     return compiler_task
 endfunction
@@ -256,7 +256,7 @@ endfunction
 function! s:save_compiler_output(compiler_task, compiler_output)
     let output = filter(a:compiler_output, 'v:val !~# "^\\s*$"')
     let a:compiler_task.output += output
-    let a:compiler_task.is_output_synced = 0
+    let a:compiler_task.is_output_synced = v:false
 endfunction
 
 
