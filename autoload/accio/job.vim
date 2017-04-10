@@ -17,7 +17,7 @@ if has("nvim")
         \ }
 
     function! accio#job#start(compiler_task)
-        let job_command = [&shell, '-c', a:compiler_task.command]
+        let job_command = [&shell, &shellcmdflag, a:compiler_task.command]
         let opts = extend({'compiler_task': a:compiler_task}, s:callbacks)
         return jobstart(job_command, opts)
     endfunction
@@ -28,7 +28,7 @@ else
     let s:compiler_tasks = {}
 
     function! accio#job#start(compiler_task)
-        let job_command = split(a:compiler_task.command, '\s\+')
+        let job_command = [&shell, &shellcmdflag, a:compiler_task.command]
         let job = job_start(job_command, s:callbacks)
         call s:save_compiler_task(job, a:compiler_task)
         call s:timer_start(job)
