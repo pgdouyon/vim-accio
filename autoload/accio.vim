@@ -311,7 +311,7 @@ function! s:format_error_messages(errors, compiler)
         let message = get(error, "text", "No error message available...")
         let message = substitute(message, '\n', ' ', 'g')
         let message = substitute(message, '\t', tab_spaces, 'g')
-        let error.text = s:truncate(message_prefix . message, &columns - 1)
+        let error.text = s:truncate(message_prefix . message, &columns - 15, "...")
     endfor
 endfunction
 
@@ -523,10 +523,11 @@ function! s:get_current_time()
 endfunction
 
 
-function! s:truncate(string, length)
+function! s:truncate(string, length, ...)
+    let trailing_characters = a:0 ? a:1 : ""
     let nth_char = byteidx(a:string, a:length)
     let needs_truncation = (nth_char != -1)
-    return needs_truncation ? strpart(a:string, 0, nth_char) : a:string
+    return needs_truncation ? strpart(a:string, 0, nth_char).trailing_characters : a:string
 endfunction
 
 
