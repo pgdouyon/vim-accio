@@ -77,14 +77,19 @@ function! accio#echo_message(...)
     let compiler = get(line_error, "accio_compiler", "")
     let meets_restriction = !has_restriction || (compiler ==# compiler_restriction)
     if meets_restriction
-        if !empty(message)
-            redraw
-            echohl WarningMsg | echo message | echohl None
-            let s:accio_echoed_message = v:true
-        elseif s:accio_echoed_message
-            echo
-            let s:accio_echoed_message = v:false
-        endif
+        let ruler_setting = &ruler
+        try
+            if !empty(message)
+                set noruler
+                echohl WarningMsg | echo message | echohl None
+                let s:accio_echoed_message = v:true
+            elseif s:accio_echoed_message
+                echo
+                let s:accio_echoed_message = v:false
+            endif
+        finally
+            let &ruler = ruler_setting
+        endtry
     endif
 endfunction
 
