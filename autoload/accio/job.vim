@@ -56,6 +56,7 @@ else
         \ 'out_cb': function('s:vim_out_cb'),
         \ 'err_cb': function('s:vim_err_cb'),
         \ 'close_cb': function('s:vim_close_cb'),
+        \ 'mode': 'raw',
         \ 'in_io': 'null',
         \ }
 

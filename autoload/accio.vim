@@ -185,7 +185,7 @@ function! s:parse_quickfix_errors(compiler_task)
     let &g:errorformat = a:compiler_task.errorformat
     call setloclist(0, [], "r")
     noautocmd laddexpr a:compiler_task.output
-    let a:compiler_task.qflist = getloclist(0)
+    let a:compiler_task.qflist = filter(copy(getloclist(0)), 'v:val["text"] =~# "\\S"')
     let a:compiler_task.is_output_synced = v:true
     let &g:errorformat = save_errorformat
     call setloclist(0, save_loclist, "r")
@@ -256,7 +256,7 @@ function! s:new_compiler_task(compiler, compiler_target, compiler_command, error
     let compiler_task.errorformat = a:errorformat
     let compiler_task.old_qflist = old_qflist
     let compiler_task.qflist = []
-    let compiler_task.output = []
+    let compiler_task.output = ['']
     let compiler_task.is_output_synced = v:true
     let compiler_task.last_update_time = s:get_current_time() - (g:accio_update_interval / 2)
     return compiler_task
@@ -280,9 +280,9 @@ endfunction
 
 
 function! s:save_compiler_output(compiler_task, compiler_output)
-    let output = filter(a:compiler_output, 'v:val !~# "^\\s*$"')
-    let a:compiler_task.output += output
     let a:compiler_task.is_output_synced = v:false
+    let a:compiler_task.output[-1] .= a:compiler_output[0]
+    call extend(a:compiler_task.output, a:compiler_output[1:])
 endfunction
 
 
