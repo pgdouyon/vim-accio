@@ -31,35 +31,38 @@ else
         let job_command = [&shell, &shellcmdflag, a:compiler_task.command]
         let job = job_start(job_command, s:callbacks)
         call s:save_compiler_task(job, a:compiler_task)
-        call s:timer_start(job)
         return s:job_id(job)
     endfunction
 
-    function! s:vim_out_cb(channel, message)
-        let data = split(a:message, '\n')
-        call s:vim_callback_handler(ch_getjob(a:channel), data, 'stdout')
+    function! s:vim_out_cb(channel, output)
+        call s:vim_callback_handler(ch_getjob(a:channel), s:split_output(a:output), 'stdout')
     endfunction
 
-    function! s:vim_err_cb(channel, message)
-        let data = split(a:message, '\n')
-        call s:vim_callback_handler(ch_getjob(a:channel), data, 'stderr')
+    function! s:vim_err_cb(channel, output)
+        call s:vim_callback_handler(ch_getjob(a:channel), s:split_output(a:output), 'stderr')
     endfunction
 
-    function! s:vim_exit_cb(job, exit_status)
-        call s:vim_callback_handler(a:job, a:exit_status, 'exit')
+    function! s:vim_close_cb(channel)
+        let job = ch_getjob(a:channel)
+        let timer_id = timer_start(100, function('s:check_job_status'), {'repeat': -1})
+        let s:timers[timer_id] = job
+    endfunction
+
+    function! s:split_output(output)
+        return split(a:output, '\v\r?\n', 1)
     endfunction
 
     let s:callbacks = {
         \ 'out_cb': function('s:vim_out_cb'),
         \ 'err_cb': function('s:vim_err_cb'),
-        \ 'exit_cb': function('s:vim_exit_cb'),
+        \ 'close_cb': function('s:vim_close_cb'),
         \ 'in_io': 'null',
         \ }
 
-    function! s:vim_callback_handler(job, message, event)
+    function! s:vim_callback_handler(job, output, event)
         let job_id = s:job_id(a:job)
         let compiler_task = s:compiler_tasks[job_id]
-        call call('accio#job_handler', [job_id, a:message, a:event], {'compiler_task': compiler_task})
+        call call('accio#job_handler', [job_id, a:output, a:event], {'compiler_task': compiler_task})
     endfunction
 
     function! s:job_id(job)
@@ -71,16 +74,19 @@ else
         let s:compiler_tasks[job_id] = a:compiler_task
     endfunction
 
-    function! s:timer_start(job)
-        let timer_id = timer_start(g:accio_update_interval, function('s:check_job_status'), {'repeat': -1})
-        let s:timers[timer_id] = a:job
-    endfunction
-
     function! s:check_job_status(timer_id)
-        if job_status(s:timers[a:timer_id]) !=# 'run'
-            call timer_stop(a:timer_id)
-            call remove(s:timers, a:timer_id)
-        endif
+        let job = s:timers[a:timer_id]
+        let job_status = job_status(job)
+        try
+            if job_status ==# 'dead'
+                call s:vim_callback_handler(job, job_info(job)['exitval'], 'exit')
+            endif
+        finally
+            if job_status !=# 'run'
+                call timer_stop(a:timer_id)
+                call remove(s:timers, a:timer_id)
+            endif
+        endtry
     endfunction
 
 endif
