@@ -99,11 +99,10 @@ endfunction
 " ======================================================================
 function! accio#on_exit(id, data, event) dict
     let s:jobs_in_progress -= 1
-    if !self.compiler_task.is_output_synced
-        call s:parse_quickfix_errors(self.compiler_task)
-        call s:update_quickfix_list(self.compiler_task)
-        call s:update_display(self.compiler_task)
-    endif
+    call s:parse_quickfix_errors(self.compiler_task)
+    call s:update_quickfix_list(self.compiler_task)
+    call s:update_display(self.compiler_task)
+
     if s:jobs_in_progress == 0 && s:force_new_quickfix
         " all jobs have finished and we still haven't created a new quickfix list,
         " there must have been no output from the job, try to create an empty one
@@ -118,7 +117,6 @@ endfunction
 
 
 function! accio#on_output(id, data, event) dict
-    let self.compiler_task.is_output_synced = v:false
     let self.compiler_task.output[-1] .= a:data[0]
     call extend(self.compiler_task.output, a:data[1:])
 endfunction
@@ -181,7 +179,6 @@ function! s:parse_quickfix_errors(compiler_task)
     call setloclist(0, [], "r")
     noautocmd laddexpr a:compiler_task.output
     let a:compiler_task.qflist = filter(copy(getloclist(0)), 'v:val["text"] =~# "\\S"')
-    let a:compiler_task.is_output_synced = v:true
     let &g:errorformat = save_errorformat
     call setloclist(0, save_loclist, "r")
 endfunction
@@ -252,7 +249,6 @@ function! s:new_compiler_task(compiler, compiler_target, compiler_command, error
     let compiler_task.old_qflist = old_qflist
     let compiler_task.qflist = []
     let compiler_task.output = ['']
-    let compiler_task.is_output_synced = v:true
     return compiler_task
 endfunction
 
