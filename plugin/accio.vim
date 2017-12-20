@@ -15,13 +15,6 @@ set cpoptions&vim
 
 let g:accio_auto_copen = get(g:, "accio_auto_copen", 0)
 let g:accio_create_empty_quickfix = get(g:, "accio_create_empty_quickfix", 1)
-let g:accio_update_interval = get(g:, "accio_update_interval", 500)
-
-" Vim's async API is not stable and causes occasional seg faults
-" use a high update interval to try and reduce load
-if !has("nvim")
-    let g:accio_update_interval = 2500
-endif
 
 sign define AccioError text=>> texthl=AccioErrorSign
 sign define AccioWarning text=>> texthl=AccioWarningSign

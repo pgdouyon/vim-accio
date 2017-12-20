@@ -102,7 +102,6 @@ function! accio#job_handler(id, data, event) dict
     if a:event ==# "exit"
         let s:jobs_in_progress -= 1
         if !compiler_task.is_output_synced
-            let compiler_task.last_update_time = s:get_current_time()
             call s:parse_quickfix_errors(compiler_task)
             call s:update_quickfix_list(compiler_task)
             call s:update_display(compiler_task)
@@ -118,12 +117,6 @@ function! accio#job_handler(id, data, event) dict
         call s:accio_process_queue()
     else
         call s:save_compiler_output(compiler_task, a:data)
-        if s:get_current_time() - compiler_task.last_update_time >= g:accio_update_interval
-            let compiler_task.last_update_time = s:get_current_time()
-            call s:parse_quickfix_errors(compiler_task)
-            call s:update_quickfix_list(compiler_task)
-            call s:update_display(compiler_task)
-        endif
     endif
     call s:cwindow()
 endfunction
@@ -258,7 +251,6 @@ function! s:new_compiler_task(compiler, compiler_target, compiler_command, error
     let compiler_task.qflist = []
     let compiler_task.output = ['']
     let compiler_task.is_output_synced = v:true
-    let compiler_task.last_update_time = s:get_current_time() - (g:accio_update_interval / 2)
     return compiler_task
 endfunction
 
