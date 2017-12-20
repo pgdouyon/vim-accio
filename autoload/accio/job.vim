@@ -11,9 +11,9 @@ set cpoptions&vim
 if has("nvim")
 
     let s:callbacks = {
-        \ 'on_stdout': function('accio#job_handler'),
-        \ 'on_stderr': function('accio#job_handler'),
-        \ 'on_exit': function('accio#job_handler')
+        \ 'on_stdout': function('accio#on_output'),
+        \ 'on_stderr': function('accio#on_output'),
+        \ 'on_exit': function('accio#on_exit')
         \ }
 
     function! accio#job#start(compiler_task)
@@ -35,11 +35,17 @@ else
     endfunction
 
     function! s:vim_out_cb(channel, output)
-        call s:vim_callback_handler(ch_getjob(a:channel), s:split_output(a:output), 'stdout')
+        let job = ch_getjob(a:channel)
+        let arglist = s:callback_arglist(job, a:output, 'stdout')
+        let dict = s:callback_dict(job)
+        call call('accio#on_output', arglist, dict)
     endfunction
 
     function! s:vim_err_cb(channel, output)
-        call s:vim_callback_handler(ch_getjob(a:channel), s:split_output(a:output), 'stderr')
+        let job = ch_getjob(a:channel)
+        let arglist = s:callback_arglist(job, a:output, 'stderr')
+        let dict = s:callback_dict(job)
+        call call('accio#on_output', arglist, dict)
     endfunction
 
     function! s:vim_close_cb(channel)
@@ -48,8 +54,12 @@ else
         let s:timers[timer_id] = job
     endfunction
 
-    function! s:split_output(output)
-        return split(a:output, '\v\r?\n', 1)
+    function! s:callback_arglist(job, output, event)
+        return [s:job_id(a:job), split(a:output, '\v\r?\n', 1), a:event]
+    endfunction
+
+    function! s:callback_dict(job)
+        return {'compiler_task': s:compiler_tasks[s:job_id(a:job)]}
     endfunction
 
     let s:callbacks = {
@@ -80,7 +90,9 @@ else
         let job_status = job_status(job)
         try
             if job_status ==# 'dead'
-                call s:vim_callback_handler(job, job_info(job)['exitval'], 'exit')
+                let arglist = [s:job_id(job), job_info(job)['exitval'], 'exit']
+                let dict = s:callback_dict(job)
+                call call('accio#on_exit', arglist, dict)
             endif
         finally
             if job_status !=# 'run'

@@ -97,28 +97,30 @@ endfunction
 " ======================================================================
 " Job Control API
 " ======================================================================
-function! accio#job_handler(id, data, event) dict
-    let compiler_task = self.compiler_task
-    if a:event ==# "exit"
-        let s:jobs_in_progress -= 1
-        if !compiler_task.is_output_synced
-            call s:parse_quickfix_errors(compiler_task)
-            call s:update_quickfix_list(compiler_task)
-            call s:update_display(compiler_task)
-        endif
-        if s:jobs_in_progress == 0 && s:force_new_quickfix
-            " all jobs have finished and we still haven't created a new quickfix list,
-            " there must have been no output from the job, try to create an empty one
-            call s:set_quickfix_list([])
-        endif
-        call s:clear_stale_compiler_errors(compiler_task)
-        call s:refresh_all_signs(compiler_task)
-        call s:cleanup(compiler_task)
-        call s:accio_process_queue()
-    else
-        call s:save_compiler_output(compiler_task, a:data)
+function! accio#on_exit(id, data, event) dict
+    let s:jobs_in_progress -= 1
+    if !self.compiler_task.is_output_synced
+        call s:parse_quickfix_errors(self.compiler_task)
+        call s:update_quickfix_list(self.compiler_task)
+        call s:update_display(self.compiler_task)
     endif
+    if s:jobs_in_progress == 0 && s:force_new_quickfix
+        " all jobs have finished and we still haven't created a new quickfix list,
+        " there must have been no output from the job, try to create an empty one
+        call s:set_quickfix_list([])
+    endif
+    call s:clear_stale_compiler_errors(self.compiler_task)
+    call s:refresh_all_signs(self.compiler_task)
+    call s:cleanup(self.compiler_task)
+    call s:accio_process_queue()
     call s:cwindow()
+endfunction
+
+
+function! accio#on_output(id, data, event) dict
+    let self.compiler_task.is_output_synced = v:false
+    let self.compiler_task.output[-1] .= a:data[0]
+    call extend(self.compiler_task.output, a:data[1:])
 endfunction
 
 
@@ -268,13 +270,6 @@ function! s:save_compiler_task(compiler_task)
         let s:compiler_tasks[a:compiler_task.target] = {}
     endif
     let s:compiler_tasks[a:compiler_task.target][a:compiler_task.compiler] = a:compiler_task
-endfunction
-
-
-function! s:save_compiler_output(compiler_task, compiler_output)
-    let a:compiler_task.is_output_synced = v:false
-    let a:compiler_task.output[-1] .= a:compiler_output[0]
-    call extend(a:compiler_task.output, a:compiler_output[1:])
 endfunction
 
 
