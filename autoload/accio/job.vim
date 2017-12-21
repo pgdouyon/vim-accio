@@ -37,21 +37,18 @@ else
     function! s:vim_out_cb(channel, output)
         let job = ch_getjob(a:channel)
         let arglist = s:callback_arglist(job, a:output, 'stdout')
-        let dict = s:callback_dict(job)
-        call call('accio#on_output', arglist, dict)
+        call call('accio#on_output', arglist, s:callback_dict(job))
     endfunction
 
     function! s:vim_err_cb(channel, output)
         let job = ch_getjob(a:channel)
         let arglist = s:callback_arglist(job, a:output, 'stderr')
-        let dict = s:callback_dict(job)
-        call call('accio#on_output', arglist, dict)
+        call call('accio#on_output', arglist, s:callback_dict(job))
     endfunction
 
     function! s:vim_close_cb(channel)
-        let job = ch_getjob(a:channel)
         let timer_id = timer_start(100, function('s:check_job_status'), {'repeat': -1})
-        let s:timers[timer_id] = job
+        let s:timers[timer_id] = ch_getjob(a:channel)
     endfunction
 
     function! s:callback_arglist(job, output, event)
@@ -70,12 +67,6 @@ else
         \ 'in_io': 'null',
         \ }
 
-    function! s:vim_callback_handler(job, output, event)
-        let job_id = s:job_id(a:job)
-        let compiler_task = s:compiler_tasks[job_id]
-        call call('accio#job_handler', [job_id, a:output, a:event], {'compiler_task': compiler_task})
-    endfunction
-
     function! s:job_id(job)
         return job_info(a:job).process
     endfunction
@@ -87,15 +78,14 @@ else
 
     function! s:check_job_status(timer_id)
         let job = s:timers[a:timer_id]
-        let job_status = job_status(job)
         try
+            let job_status = job_status(job)
             if job_status ==# 'dead'
-                let arglist = [s:job_id(job), job_info(job)['exitval'], 'exit']
-                let dict = s:callback_dict(job)
-                call call('accio#on_exit', arglist, dict)
+                let arglist = [s:job_id(job), job_info(job).exitval, 'exit']
+                call call('accio#on_exit', arglist, s:callback_dict(job))
             endif
         finally
-            if job_status !=# 'run'
+            if !(exists("job_status") && job_status ==# 'run')
                 call timer_stop(a:timer_id)
                 call remove(s:timers, a:timer_id)
             endif
