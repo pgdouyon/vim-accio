@@ -69,16 +69,13 @@ endfunction
 
 
 function! accio#echo_message(...)
-    let has_restriction = a:0
-    let compiler_restriction = a:0 ? a:1 : ""
     let buffer_line_errors = get(s:accio_line_errors, bufnr("%"), {})
     let line_error = get(buffer_line_errors, line("."), {})
-    let message = get(line_error, "text", "")
-    let compiler = get(line_error, "accio_compiler", "")
-    let meets_restriction = !has_restriction || (compiler ==# compiler_restriction)
+    let meets_restriction = empty(a:000) || (get(line_error, "accio_compiler", "") ==# a:1)
     if meets_restriction
         let ruler_setting = &ruler
         try
+            let message = get(line_error, "text", "")
             if !empty(message)
                 set noruler
                 echohl WarningMsg | echo message | echohl None
