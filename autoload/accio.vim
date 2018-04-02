@@ -109,7 +109,6 @@ function! accio#on_exit(id, data, event) dict
         call s:set_quickfix_list([])
     endif
     call s:clear_stale_compiler_errors(self.compiler_task)
-    call s:refresh_all_signs(self.compiler_task)
     call s:cleanup(self.compiler_task)
     call s:accio_process_queue()
     call s:cwindow()
@@ -327,24 +326,9 @@ function! s:update_line_errors(errors, compiler)
             let errors_by_line = uniq(sort(add(s:get_errors_by_line(bufnr, lnum), error)))
             let best_error = s:get_best_error(errors_by_line)
             call s:set_errors_by_line(bufnr, lnum, errors_by_line)
-            if current_line_error !=# best_error
-                call s:set_line_error(bufnr, lnum, best_error)
-                call s:unplace_sign(current_line_error)
-                call s:place_sign(best_error)
-            endif
-        endif
-    endfor
-endfunction
-
-
-function! s:refresh_all_signs(compiler_task)
-    for error in a:compiler_task.qflist
-        let bufnr = error.bufnr
-        let lnum = error.lnum
-        if bufnr > 0 && lnum > 0
-            let current_line_error = s:get_line_error(bufnr, lnum)
+            call s:set_line_error(bufnr, lnum, best_error)
             call s:unplace_sign(current_line_error)
-            call s:place_sign(current_line_error)
+            call s:place_sign(best_error)
         endif
     endfor
 endfunction
