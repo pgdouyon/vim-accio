@@ -125,14 +125,7 @@ endfunction
 " Parsing Functions
 " ======================================================================
 function! s:parse_accio_args(args)
-    if a:args[0] ==# "[" && a:args[-1:] ==# "]"
-        let args = eval(a:args)[0]
-        let rest = eval(a:args)[1:]
-    else
-        let args = a:args
-        let rest = []
-    endif
-    return [args] + rest
+    return (a:args =~# '^\m\s*\[.\+\]\s*$') ? eval(a:args) : [a:args]
 endfunction
 
 
