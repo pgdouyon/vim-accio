@@ -103,11 +103,6 @@ function! accio#on_exit(id, data, event) dict
     call s:update_quickfix_list(self.compiler_task)
     call s:update_display(self.compiler_task)
 
-    if s:jobs_in_progress == 0 && s:force_new_quickfix
-        " all jobs have finished and we still haven't created a new quickfix list,
-        " there must have been no output from the job, try to create an empty one
-        call s:set_quickfix_list([])
-    endif
     call s:clear_stale_compiler_errors(self.compiler_task)
     call s:cleanup(self.compiler_task)
     call s:accio_process_queue()
