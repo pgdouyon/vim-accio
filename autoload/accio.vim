@@ -105,6 +105,8 @@ function! accio#on_exit(id, data, event) dict
 
     call s:clear_stale_compiler_errors(self.compiler_task)
     call s:cleanup(self.compiler_task)
+
+    call accio#echo_message(self.compiler_task.compiler)
     call s:accio_process_queue()
     call s:cwindow()
 endfunction
@@ -338,7 +340,6 @@ function! s:clear_stale_compiler_errors(compiler_task)
         endif
     endfor
     silent! unlet a:compiler_task.old_qflist
-    call accio#echo_message(a:compiler_task.compiler)
 endfunction
 
 
